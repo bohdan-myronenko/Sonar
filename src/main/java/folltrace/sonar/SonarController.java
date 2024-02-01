@@ -74,6 +74,12 @@ public class SonarController implements PlaybackCallback{
     private MenuItem stopMenuItem;
 
     @FXML
+    private MenuItem nextTrackMenuItem;
+
+    @FXML
+    private MenuItem prevTrackMenuItem;
+
+    @FXML
     private ScrollPane fileScrollPane;
 
     @FXML
@@ -234,23 +240,41 @@ public class SonarController implements PlaybackCallback{
         updateSongInfo(mediaPlayer.getMedia());
     }
 
+    @FXML
+    private void handleNext() {
+        onNextTrack();
+    }
+
+    @FXML
+    private void handlePrevious() {
+        onPreviousTrack();
+    }
+
     @Override
     public void onNextTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
         if (currentIndex < fileListView.getItems().size() - 1) {
-            String nextTrackName = fileListView.getItems().get(currentIndex + 1);
-            playback.playMedia(fileMap.get(nextTrackName));
-            fileListView.getSelectionModel().select(currentIndex + 1);
+            currentIndex++;
+        } else {
+            currentIndex = 0; // Cycle back to the first track
         }
+        playSelectedTrack(currentIndex);
     }
 
     @Override
     public void onPreviousTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
         if (currentIndex > 0) {
-            String previousTrackName = fileListView.getItems().get(currentIndex - 1);
-            playback.playMedia(fileMap.get(previousTrackName));
-            fileListView.getSelectionModel().select(currentIndex - 1);
+            currentIndex--;
+        } else {
+            currentIndex = fileListView.getItems().size() - 1; // Cycle to the last track
         }
+        playSelectedTrack(currentIndex);
+    }
+
+    private void playSelectedTrack(int index) {
+        String trackName = fileListView.getItems().get(index);
+        playback.playMedia(fileMap.get(trackName));
+        fileListView.getSelectionModel().select(index);
     }
 }

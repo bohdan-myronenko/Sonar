@@ -66,6 +66,8 @@
           <items>
             <MenuItem fx:id="playPauseMenuitem" mnemonicParsing="false" onAction="#handleTogglePlayPause" text="Play/Pause" />
             <MenuItem fx:id="stopMenuItem" mnemonicParsing="false" onAction="#handleStop" text="Stop" />
+                  <MenuItem fx:id="nextTrackMenuItem" mnemonicParsing="false" onAction="#handleNext" text="Next" />
+                  <MenuItem fx:id="prevTrackMenuItem" mnemonicParsing="false" onAction="#handlePrevious" text="Previous" />
                   <Menu mnemonicParsing="false" text="Repeat">
                     <items>
                       <MenuItem mnemonicParsing="false" text="All tracks" />
@@ -97,9 +99,9 @@
                   <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" text="🔁" />
                   <Button id="shuffle_btn" fx:id="toggleShuffleButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="28.0" text="🔀" />
                 <Button id="stop_btn" fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" text="⏹" />
-                  <Button id="play_btn" fx:id="prevButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="28.0" text="⏮" />
+                  <Button id="play_btn" fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" text="⏮" />
                   <Button id="play_btn" fx:id="togglePlayPauseButton" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="26.0" prefWidth="28.0" text="⏯" />
-                  <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="28.0" text="⏭" />
+                  <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="26.0" prefWidth="28.0" text="⏭" />
                   <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="411.0" />
                   <Text strokeType="OUTSIDE" strokeWidth="0.0" text="🔊" />
                   <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" prefHeight="14.0" prefWidth="97.0" value="0.5" />
