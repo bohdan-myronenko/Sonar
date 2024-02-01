@@ -70,8 +70,9 @@
                   <MenuItem fx:id="prevTrackMenuItem" mnemonicParsing="false" onAction="#handlePrevious" text="Previous" />
                   <Menu mnemonicParsing="false" text="Repeat">
                     <items>
-                      <MenuItem mnemonicParsing="false" text="All tracks" />
-                        <MenuItem mnemonicParsing="false" text="This track" />
+                      <MenuItem fx:id="repeatAllMenuItem" mnemonicParsing="false" onAction="#handleRepeatAll" text="All tracks" />
+                        <MenuItem fx:id="repeatOneMenuItem" mnemonicParsing="false" onAction="#handleRepeatOne" text="This track" />
+                        <MenuItem fx:id="repeatOffMenuItem" mnemonicParsing="false" onAction="#handleRepeatOff" text="Off" />
                     </items>
                   </Menu>
             <MenuItem mnemonicParsing="false" text="Shuffle" />
@@ -96,7 +97,7 @@
             </ScrollPane>
             <ToolBar layoutX="2.0" layoutY="440.0" prefHeight="38.0" prefWidth="766.0">
               <items>
-                  <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" text="🔁" />
+                  <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" text="🔁" />
                   <Button id="shuffle_btn" fx:id="toggleShuffleButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="28.0" text="🔀" />
                 <Button id="stop_btn" fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" text="⏹" />
                   <Button id="play_btn" fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" text="⏮" />

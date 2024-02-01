@@ -17,10 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 public class SonarController implements PlaybackCallback{
-    private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
+    // JAVAFX COMPONENTS
+    // BUTTONS
 
-
-    private Playback playback;
     @FXML
     private Button togglePlayPauseButton;
 
@@ -38,6 +37,9 @@ public class SonarController implements PlaybackCallback{
 
     @FXML
     private Button prevButton;
+
+
+    // LABELS
 
     @FXML
     private Label statusLabel;
@@ -61,8 +63,13 @@ public class SonarController implements PlaybackCallback{
 
     private Text authorName;
 
+
+    // IMAGES
     @FXML
     private ImageView albumCoverImageView;
+
+
+    //MENU ITEMS
 
     @FXML
     private MenuItem browseMenuItem;
@@ -80,32 +87,65 @@ public class SonarController implements PlaybackCallback{
     private MenuItem prevTrackMenuItem;
 
     @FXML
+    private MenuItem repeatOffMenuItem;
+
+    @FXML
+    private MenuItem repeatAllMenuItem;
+
+    @FXML
+    private MenuItem repeatOneMenuItem;
+
+
+    // LISTS
+
+    @FXML
     private ScrollPane fileScrollPane;
 
     @FXML
     private ListView<String> fileListView;
 
+
+    // ...
+
     private Map<String, String> fileMap = new HashMap<>();
 
+    private RepeatState repeatState = RepeatState.OFF;
 
     private MediaPlayer mediaPlayer;
+    private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
+
+    @Override
+    public RepeatState getRepeatState() {
+        return this.repeatState;
+    }
+    private Playback playback;
 
     @FXML
     public void initialize() {
         playback = new Playback(this);
+
         String filePath = "D:\\User Files\\ProgFiles\\Java\\Sonar\\music.mp3";
         Media media = new Media(new File(filePath).toURI().toString());
         mediaPlayer = new MediaPlayer(media);
 
-        // Example of setting initial label text
-        statusLabel.setText("Ready to play");
-        mediaPlayer.volumeProperty().bind(volumeSlider.valueProperty());
+        playback = new Playback(this);
 
-        // Add a listener to the slider's value property
+        // Set initial text for labels and status
+        songName.setText("No tracks loaded");
+        albumName.setText("No tracks loaded");
+        authorName.setText("No tracks loaded");
+        statusLabel.setText("No track selected");
+        volumeLabel.setText((int) Math.round(volumeSlider.getValue() * 100) + "%");
+
+        // Initialize volume slider listener
         volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (mediaPlayer != null) {
+                mediaPlayer.setVolume(newValue.doubleValue());
+            }
             int volumePercent = (int) Math.round(newValue.doubleValue() * 100);
             volumeLabel.setText(volumePercent + "%");
         });
+
 
         // Initialize the label with the current volume
         volumeLabel.setText((int) Math.round(volumeSlider.getValue() * 100) + "%");
@@ -141,6 +181,8 @@ public class SonarController implements PlaybackCallback{
         });
     }
 
+
+    // HANDLERS
     @FXML
     private void handleTogglePlayPause() {
         if (mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
@@ -171,6 +213,55 @@ public class SonarController implements PlaybackCallback{
         }
     }
 
+
+    @FXML
+    private void handleRepeatToggle() {
+        switch (repeatState) {
+            case OFF:
+                repeatState = RepeatState.REPEAT_ALL;
+                updateRepeatModeUI();
+                break;
+            case REPEAT_ALL:
+                repeatState = RepeatState.REPEAT_ONE;
+                updateRepeatModeUI();
+                break;
+            case REPEAT_ONE:
+                repeatState = RepeatState.OFF;
+                updateRepeatModeUI();
+                break;
+        }
+    }
+
+    @FXML
+    private void handleRepeatOff() {
+        repeatState = RepeatState.OFF;
+        updateRepeatModeUI();
+    }
+
+    @FXML
+    private void handleRepeatAll() {
+        repeatState = RepeatState.REPEAT_ALL;
+        updateRepeatModeUI();
+    }
+
+    @FXML
+    private void handleRepeatOne() {
+        repeatState = RepeatState.REPEAT_ONE;
+        updateRepeatModeUI();
+    }
+    @FXML
+    private void handleNext() {
+        onNextTrack();
+    }
+
+    @FXML
+    private void handlePrevious() {
+        onPreviousTrack();
+    }
+
+
+    // METHODS
+
     private void updateFileList(File folder) {
         File[] files = folder.listFiles();
         if (files != null) {
@@ -200,12 +291,23 @@ public class SonarController implements PlaybackCallback{
         return false;
     }
 
-
-
-
-
-
-
+    private void updateRepeatModeUI() {
+        // Update the UI based on the current repeat state
+        switch (repeatState) {
+            case OFF:
+                statusLabel.setText("Repeat: Off");
+                toggleRepeatButton.setText("✕");
+                break;
+            case REPEAT_ALL:
+                statusLabel.setText("Repeat: All");
+                toggleRepeatButton.setText("🔁");
+                break;
+            case REPEAT_ONE:
+                statusLabel.setText("Repeat: One");
+                toggleRepeatButton.setText("🔂");
+                break;
+        }
+    }
     private void updateSongInfo(Media media) {
         if (media.getMetadata().containsKey("title")) {
             songName.setText(media.getMetadata().get("title").toString());
@@ -224,10 +326,17 @@ public class SonarController implements PlaybackCallback{
 
     @Override
     public void onMediaReady(MediaPlayer mediaPlayer) {
-        this.mediaPlayer = mediaPlayer; // Assign the new MediaPlayer instance
+        this.mediaPlayer = mediaPlayer;
 
+        // Update UI components
+        updateUIForMediaPlayer(mediaPlayer);
+
+        updateSongInfo(mediaPlayer.getMedia());
+    }
+
+    private void updateUIForMediaPlayer(MediaPlayer mediaPlayer) {
         seekSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
-        mediaPlayer.volumeProperty().bind(volumeSlider.valueProperty());
+
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
             if (!seekSlider.isValueChanging()) {
                 seekSlider.setValue(newTime.toSeconds());
@@ -236,41 +345,62 @@ public class SonarController implements PlaybackCallback{
 
         togglePlayPauseButton.setText("⏸");
         statusLabel.setText("Playing");
-
-        updateSongInfo(mediaPlayer.getMedia());
     }
 
-    @FXML
-    private void handleNext() {
-        onNextTrack();
-    }
 
-    @FXML
-    private void handlePrevious() {
-        onPreviousTrack();
-    }
 
     @Override
     public void onNextTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
-        if (currentIndex < fileListView.getItems().size() - 1) {
-            currentIndex++;
+        int totalTracks = fileListView.getItems().size();
+
+        if (currentIndex < totalTracks - 1) {
+            // Move to the next track
+            playSelectedTrack(currentIndex + 1);
         } else {
-            currentIndex = 0; // Cycle back to the first track
+            // At the last track
+            if (repeatState == RepeatState.REPEAT_ALL) {
+                // Start from the beginning in 'Repeat All' mode
+                playSelectedTrack(0);
+            } else {
+                // If repeat is off or 'Repeat One', stop playback at the end of the playlist
+                mediaPlayer.stop();
+                statusLabel.setText("Playback stopped");
+                fileListView.getSelectionModel().clearSelection();
+            }
         }
-        playSelectedTrack(currentIndex);
     }
+
+
 
     @Override
     public void onPreviousTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
         if (currentIndex > 0) {
-            currentIndex--;
+            // Go to the previous track
+            playSelectedTrack(currentIndex - 1);
         } else {
-            currentIndex = fileListView.getItems().size() - 1; // Cycle to the last track
+            // At the beginning of the playlist
+            switch (repeatState) {
+                case REPEAT_ALL:
+                    // Go to the last track
+                    playSelectedTrack(fileListView.getItems().size() - 1);
+                    break;
+                case REPEAT_ONE:
+                    // Repeat the current (first) track
+                    playSelectedTrack(currentIndex);
+                    break;
+                default:
+                    // If repeat is off, stay on the first track
+                    mediaPlayer.stop();
+                    statusLabel.setText("Playback stopped");
+                    fileListView.getSelectionModel().clearSelection();
+                    break;
+            }
         }
-        playSelectedTrack(currentIndex);
     }
+
+
 
     private void playSelectedTrack(int index) {
         String trackName = fileListView.getItems().get(index);

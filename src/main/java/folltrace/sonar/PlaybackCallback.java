@@ -6,4 +6,5 @@ public interface PlaybackCallback {
     void onMediaReady(MediaPlayer duration);
     void onNextTrack();
     void onPreviousTrack();
+    RepeatState getRepeatState();
 }
