@@ -1,6 +1,9 @@
 package folltrace.sonar;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -8,6 +11,8 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.File;
@@ -95,6 +100,12 @@ public class SonarController implements PlaybackCallback{
     @FXML
     private MenuItem repeatOneMenuItem;
 
+    @FXML
+    private MenuItem aboutUsMenuItem;
+
+    @FXML
+    private MenuItem quitMenuItem;
+
 
     // LISTS
 
@@ -124,11 +135,10 @@ public class SonarController implements PlaybackCallback{
     public void initialize() {
         playback = new Playback(this);
 
-        String filePath = "D:\\User Files\\ProgFiles\\Java\\Sonar\\music.mp3";
-        Media media = new Media(new File(filePath).toURI().toString());
+        // Load the music file from the resources folder
+        String musicPath = "/music.mp3"; // Path relative to the classpath
+        Media media = new Media(getClass().getResource(musicPath).toExternalForm());
         mediaPlayer = new MediaPlayer(media);
-
-        playback = new Playback(this);
 
         // Set initial text for labels and status
         songName.setText("No tracks loaded");
@@ -146,12 +156,9 @@ public class SonarController implements PlaybackCallback{
             volumeLabel.setText(volumePercent + "%");
         });
 
-
-        // Initialize the label with the current volume
-        volumeLabel.setText((int) Math.round(volumeSlider.getValue() * 100) + "%");
-
         mediaPlayer.setOnReady(() -> {
             seekSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
+            updateSongInfo(media);
         });
 
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
@@ -174,12 +181,8 @@ public class SonarController implements PlaybackCallback{
                 }
             }
         });
-
-        mediaPlayer.setOnReady(() -> {
-            seekSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
-            updateSongInfo(media);
-        });
     }
+
 
 
     // HANDLERS
@@ -257,6 +260,34 @@ public class SonarController implements PlaybackCallback{
     @FXML
     private void handlePrevious() {
         onPreviousTrack();
+    }
+
+    @FXML
+    private void handleAboutUs() {
+        try {
+            // Load the About Us FXML file
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/folltrace/sonar/about.fxml"));
+            Parent aboutUsRoot = fxmlLoader.load();
+
+            // Create a new Stage for the About Us window
+            Stage aboutUsStage = new Stage();
+            aboutUsStage.setTitle("About Us");
+            aboutUsStage.initModality(Modality.APPLICATION_MODAL); // Makes the window modal
+            aboutUsStage.setScene(new Scene(aboutUsRoot));
+
+            // Show the About Us window and wait for it to be closed
+            aboutUsStage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Handle exceptions (e.g., FXML file not found)
+        }
+    }
+
+    @FXML
+    private void handleQuitAction() {
+        // Get the current stage and close it
+        Stage stage = (Stage) quitMenuItem.getParentPopup().getOwnerWindow();
+        stage.close();
     }
 
 

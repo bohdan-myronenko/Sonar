@@ -59,7 +59,7 @@
             <SeparatorMenuItem mnemonicParsing="false" />
             <MenuItem mnemonicParsing="false" text="Preferences…" />
             <SeparatorMenuItem mnemonicParsing="false" />
-            <MenuItem mnemonicParsing="false" text="Quit" />
+            <MenuItem fx:id="quitMenuItem" mnemonicParsing="false" onAction="#handleQuitAction" text="Quit" />
           </items>
         </Menu>
         <Menu mnemonicParsing="false" text="Playback">
@@ -80,7 +80,7 @@
         </Menu>
         <Menu mnemonicParsing="false" text="Help">
           <items>
-            <MenuItem mnemonicParsing="false" text="About Sonar..." />
+            <MenuItem fx:id="aboutUsMenuItem" mnemonicParsing="false" onAction="#handleAboutUs" text="About Sonar..." />
           </items>
         </Menu>
       </menus>
