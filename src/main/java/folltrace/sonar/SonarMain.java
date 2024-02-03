@@ -17,12 +17,6 @@ public class SonarMain extends Application {
         Parent root = FXMLLoader.load(getClass().getResource("/folltrace/sonar/player.fxml"));
         primaryStage.setScene(new Scene(root));
         primaryStage.show();
-
-        // Load the music file from the resources folder
-        String musicPath = "/music.mp3"; // Path relative to the classpath
-        Media media = new Media(getClass().getResource(musicPath).toExternalForm());
-        MediaPlayer mediaPlayer = new MediaPlayer(media);
-        mediaPlayer.play(); // Play the music
     }
 
     public static void main(String[] args) {

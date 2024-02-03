@@ -11,17 +11,15 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class SonarController implements PlaybackCallback{
+public class SonarController implements PlayerCallback {
     // JAVAFX COMPONENTS
     // BUTTONS
 
@@ -77,7 +75,10 @@ public class SonarController implements PlaybackCallback{
     //MENU ITEMS
 
     @FXML
-    private MenuItem browseMenuItem;
+    private MenuItem scanFolderMenuItem;
+
+    @FXML
+    private MenuItem scanFileMenuItem;
 
     @FXML
     private MenuItem playPauseMenuitem;
@@ -118,6 +119,9 @@ public class SonarController implements PlaybackCallback{
 
     // ...
 
+
+    private List<String> playlist = new ArrayList<>();
+    private Map<String, String> trackNamesToPaths = new HashMap<>();
     private Map<String, String> fileMap = new HashMap<>();
 
     private RepeatState repeatState = RepeatState.OFF;
@@ -129,11 +133,11 @@ public class SonarController implements PlaybackCallback{
     public RepeatState getRepeatState() {
         return this.repeatState;
     }
-    private Playback playback;
+    private Player player;
 
     @FXML
     public void initialize() {
-        playback = new Playback(this);
+        player = new Player(this);
 
         // Load the music file from the resources folder
         String musicPath = "/music.mp3"; // Path relative to the classpath
@@ -216,6 +220,20 @@ public class SonarController implements PlaybackCallback{
         }
     }
 
+    @FXML
+    private void handleAddFileToPlaylist() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Music File");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.m4a")
+        );
+
+        Stage stage = (Stage) fileListView.getScene().getWindow();
+        File file = fileChooser.showOpenDialog(stage);
+
+        addFileToPlaylist(file);
+    }
+
 
     @FXML
     private void handleRepeatToggle() {
@@ -279,7 +297,6 @@ public class SonarController implements PlaybackCallback{
             aboutUsStage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();
-            // Handle exceptions (e.g., FXML file not found)
         }
     }
 
@@ -293,24 +310,22 @@ public class SonarController implements PlaybackCallback{
 
     // METHODS
 
+    private void addFileToPlaylist(File file) {
+        if (file != null && isSupportedFile(file.getName())) {
+            String trackName = file.getName();
+            playlist.add(file.getAbsolutePath());
+            trackNamesToPaths.put(trackName, file.getAbsolutePath());
+            fileListView.getItems().add(trackName);
+        }
+    }
+
     private void updateFileList(File folder) {
         File[] files = folder.listFiles();
         if (files != null) {
-            fileListView.getItems().clear();
-            fileMap.clear();
             for (File file : files) {
-                if (file.isFile() && isSupportedFile(file.getName())) {
-                    fileListView.getItems().add(file.getName());
-                    fileMap.put(file.getName(), file.getAbsolutePath());
-                }
+                addFileToPlaylist(file);
             }
         }
-        // Add listener to ListView
-        fileListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            if (newSelection != null) {
-                playback.playMedia(fileMap.get(newSelection));
-            }
-        });
     }
 
     private boolean isSupportedFile(String fileName) {
@@ -339,7 +354,7 @@ public class SonarController implements PlaybackCallback{
                 break;
         }
     }
-    private void updateSongInfo(Media media) {
+    public void updateSongInfo(Media media) {
         if (media.getMetadata().containsKey("title")) {
             songName.setText(media.getMetadata().get("title").toString());
         }
@@ -383,22 +398,16 @@ public class SonarController implements PlaybackCallback{
     @Override
     public void onNextTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
-        int totalTracks = fileListView.getItems().size();
+        int nextIndex = currentIndex + 1;
 
-        if (currentIndex < totalTracks - 1) {
-            // Move to the next track
-            playSelectedTrack(currentIndex + 1);
+        if (nextIndex < playlist.size()) {
+            playSelectedTrack(nextIndex);
+        } else if (repeatState == RepeatState.REPEAT_ALL) {
+            playSelectedTrack(0); // Start from the beginning
         } else {
-            // At the last track
-            if (repeatState == RepeatState.REPEAT_ALL) {
-                // Start from the beginning in 'Repeat All' mode
-                playSelectedTrack(0);
-            } else {
-                // If repeat is off or 'Repeat One', stop playback at the end of the playlist
-                mediaPlayer.stop();
-                statusLabel.setText("Playback stopped");
-                fileListView.getSelectionModel().clearSelection();
-            }
+            // Playback stopped, no repeat
+            mediaPlayer.stop();
+            statusLabel.setText("Playback stopped");
         }
     }
 
@@ -407,35 +416,25 @@ public class SonarController implements PlaybackCallback{
     @Override
     public void onPreviousTrack() {
         int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
-        if (currentIndex > 0) {
-            // Go to the previous track
-            playSelectedTrack(currentIndex - 1);
+        int previousIndex = currentIndex - 1;
+
+        if (previousIndex >= 0) {
+            // Normal case: Go to the previous track
+            playSelectedTrack(previousIndex);
         } else {
-            // At the beginning of the playlist
-            switch (repeatState) {
-                case REPEAT_ALL:
-                    // Go to the last track
-                    playSelectedTrack(fileListView.getItems().size() - 1);
-                    break;
-                case REPEAT_ONE:
-                    // Repeat the current (first) track
-                    playSelectedTrack(currentIndex);
-                    break;
-                default:
-                    // If repeat is off, stay on the first track
-                    mediaPlayer.stop();
-                    statusLabel.setText("Playback stopped");
-                    fileListView.getSelectionModel().clearSelection();
-                    break;
-            }
+            // Special case: If at the first track, go to the last track in the playlist
+            playSelectedTrack(playlist.size() - 1);
         }
     }
 
 
 
+
     private void playSelectedTrack(int index) {
-        String trackName = fileListView.getItems().get(index);
-        playback.playMedia(fileMap.get(trackName));
-        fileListView.getSelectionModel().select(index);
+        if (index >= 0 && index < playlist.size()) {
+            String filePath = playlist.get(index);
+            player.playMedia(filePath);
+            fileListView.getSelectionModel().select(index);
+        }
     }
 }

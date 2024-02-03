@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="349.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="folltrace.sonar.AboutUsWindowCtrlr">
+   <children>
+      <AnchorPane prefHeight="346.0" prefWidth="600.0">
+         <children>
+            <Text layoutX="14.0" layoutY="58.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Sonar" wrappingWidth="141.33676147460938">
+               <font>
+                  <Font name="Microsoft Sans Serif" size="48.0" />
+               </font>
+            </Text>
+            <Text layoutX="14.0" layoutY="103.0" strokeType="OUTSIDE" strokeWidth="0.0" text="A simple music player, written using JavaFX">
+               <font>
+                  <Font size="21.0" />
+               </font>
+            </Text>
+            <Text layoutX="14.0" layoutY="176.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Version">
+               <font>
+                  <Font size="16.0" />
+               </font>
+            </Text>
+            <Text layoutX="85.0" layoutY="175.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Alpha 0.4b">
+               <font>
+                  <Font size="16.0" />
+               </font>
+            </Text>
+            <Hyperlink fx:id="websiteLink" layoutX="14.0" layoutY="313.0" onMouseReleased="#handleHyperlinkAction" text="GitHub" />
+            <Text layoutX="14.0" layoutY="229.0" strokeType="OUTSIDE" strokeWidth="0.0" text="This is a development version of this program. Sonar is subject to changes, therefore at some point you may notice that the program looks completely different from the last version. If you have any known issues, feel free to visit my GitHub and submit the issue using the corresponding tab in the repository. Thank you for using Sonar!" wrappingWidth="400.0" />
+            <ImageView fitHeight="160.0" fitWidth="160.0" layoutX="426.0" layoutY="14.0">
+               <image>
+                  <Image url="@../../logo.png" />
+               </image>
+            </ImageView>
+         </children>
+      </AnchorPane>
+   </children>
+</VBox>

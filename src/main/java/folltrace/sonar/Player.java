@@ -6,11 +6,11 @@ import javafx.util.Duration;
 
 import java.io.File;
 
-public class Playback {
+public class Player {
     private MediaPlayer mediaPlayer;
-    private PlaybackCallback callback;
+    private PlayerCallback callback;
 
-    public Playback(PlaybackCallback callback){
+    public Player(PlayerCallback callback){
         this.callback = callback;
     }
     public void playMedia(String filePath) {
@@ -38,6 +38,8 @@ public class Playback {
 
         mediaPlayer.play();
     }
+
+
 
     public MediaPlayer getMediaPlayer(){
         return mediaPlayer;
