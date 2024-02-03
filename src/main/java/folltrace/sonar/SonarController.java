@@ -1,5 +1,10 @@
 package folltrace.sonar;
 
+import com.mpatric.mp3agic.ID3v2;
+import com.mpatric.mp3agic.InvalidDataException;
+import com.mpatric.mp3agic.Mp3File;
+import com.mpatric.mp3agic.UnsupportedTagException;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -15,9 +20,19 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import java.io.File;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.mp3.Mp3Parser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.xml.sax.ContentHandler;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.net.URI;
 import java.util.*;
+
+
+
 
 public class SonarController implements PlayerCallback {
     // JAVAFX COMPONENTS
@@ -40,6 +55,9 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private Button prevButton;
+
+    @FXML
+    private Button deleteButton;
 
 
     // LABELS
@@ -107,6 +125,9 @@ public class SonarController implements PlayerCallback {
     @FXML
     private MenuItem quitMenuItem;
 
+    @FXML
+    private MenuItem deleteFromPlaylistMenuItem;
+
 
     // LISTS
 
@@ -114,7 +135,7 @@ public class SonarController implements PlayerCallback {
     private ScrollPane fileScrollPane;
 
     @FXML
-    private ListView<String> fileListView;
+    private ListView<Track> fileListView;
 
 
     // ...
@@ -185,6 +206,30 @@ public class SonarController implements PlayerCallback {
                 }
             }
         });
+
+        fileListView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                Track selectedTrack = fileListView.getSelectionModel().getSelectedItem();
+                String selectedTrackName = selectedTrack.getName();
+                if (selectedTrackName != null) {
+                    String selectedTrackPath = trackNamesToPaths.get(selectedTrackName);
+                    playSelectedTrack(playlist.indexOf(selectedTrackPath));
+                }
+            }
+        });
+
+        fileListView.setCellFactory(lv -> new ListCell<Track>() {
+            @Override
+            protected void updateItem(Track track, boolean empty) {
+                super.updateItem(track, empty);
+                if (empty || track == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(track.getName() + " - " + track.getDuration());
+                }
+            }
+        });
     }
 
 
@@ -205,8 +250,10 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private void handleStop() {
-        mediaPlayer.stop();
-        statusLabel.setText("Stopped");
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            statusLabel.setText("Stopped");
+        }
     }
 
 
@@ -289,6 +336,7 @@ public class SonarController implements PlayerCallback {
 
             // Create a new Stage for the About Us window
             Stage aboutUsStage = new Stage();
+            aboutUsStage.getIcons().add(new Image("/logo.png"));
             aboutUsStage.setTitle("About Us");
             aboutUsStage.initModality(Modality.APPLICATION_MODAL); // Makes the window modal
             aboutUsStage.setScene(new Scene(aboutUsRoot));
@@ -307,17 +355,74 @@ public class SonarController implements PlayerCallback {
         stage.close();
     }
 
+    @FXML
+    private void handleDeleteFromPlaylist() {
+        int selectedIndex = fileListView.getSelectionModel().getSelectedIndex();
+        if (selectedIndex != -1) {
+            Track selectedTrack = fileListView.getSelectionModel().getSelectedItem();
+            String selectedTrackName = selectedTrack.getName();
+            String selectedTrackPath = trackNamesToPaths.get(selectedTrackName);
+
+            boolean isPlayingTrackDeleted = mediaPlayer != null &&
+                    mediaPlayer.getMedia().getSource().equals(new File(selectedTrackPath).toURI().toString());
+
+            // Remove the track from the ListView, track map, and playlist
+            fileListView.getItems().remove(selectedIndex);
+            trackNamesToPaths.remove(selectedTrackName);
+            playlist.remove(selectedTrackPath);
+
+            if (isPlayingTrackDeleted) {
+                if (repeatState == RepeatState.REPEAT_ONE) {
+                    // Check if there are other tracks in the playlist
+                    if (!playlist.isEmpty()) {
+                        // Play the next track in the playlist or start over
+                        int nextIndex = (selectedIndex < playlist.size()) ? selectedIndex : 0;
+                        playSelectedTrack(nextIndex);
+                    } else {
+                        // No more tracks to play
+                        mediaPlayer.stop();
+                        statusLabel.setText("Playback stopped");
+                    }
+                } else {
+                    // Handle other repeat states
+                    player.stopMedia(); // Stop the media player
+                    if (selectedIndex < playlist.size()) {
+                        playSelectedTrack(selectedIndex); // Play next track
+                    } else if (repeatState == RepeatState.REPEAT_ALL && !playlist.isEmpty()) {
+                        playSelectedTrack(0); // Play first track in 'Repeat All' mode
+                    } else {
+                        mediaPlayer.stop();
+                        statusLabel.setText("Playback stopped");
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
 
     // METHODS
 
     private void addFileToPlaylist(File file) {
         if (file != null && isSupportedFile(file.getName())) {
-            String trackName = file.getName();
+            String trackDuration = getTrackDuration(file);
+            Track track = new Track(file.getName(), trackDuration); // Use actual duration
+            fileListView.getItems().add(track);
+
+            // Update the map with track name to file path mapping
+            trackNamesToPaths.put(file.getName(), file.getAbsolutePath());
+
+            // Add the file path to the playlist for playback
             playlist.add(file.getAbsolutePath());
-            trackNamesToPaths.put(trackName, file.getAbsolutePath());
-            fileListView.getItems().add(trackName);
         }
     }
+
+
 
     private void updateFileList(File folder) {
         File[] files = folder.listFiles();
@@ -364,11 +469,33 @@ public class SonarController implements PlayerCallback {
         if (media.getMetadata().containsKey("artist")) {
             authorName.setText(media.getMetadata().get("artist").toString());
         }
-        if (media.getMetadata().containsKey("image")) {
-            Image coverImage = (Image) media.getMetadata().get("image");
-            albumCoverImageView.setImage(coverImage);
+
+        String sourceUrl = media.getSource();
+        URI uri = null;
+        try {
+            uri = new URI(sourceUrl);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        File file = new File(uri);
+
+        // Get the album cover as BufferedImage
+        BufferedImage albumCover;
+        try {
+            albumCover = getAlbumCover(file);
+            if (albumCover != null) {
+                // Convert BufferedImage to javafx.scene.image.Image
+                Image coverImage = SwingFXUtils.toFXImage(albumCover, null);
+                albumCoverImageView.setImage(coverImage);
+            } else {
+                // Set a default image or clear the existing image
+                albumCoverImageView.setImage(null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+
 
     @Override
     public void onMediaReady(MediaPlayer mediaPlayer) {
@@ -437,4 +564,58 @@ public class SonarController implements PlayerCallback {
             fileListView.getSelectionModel().select(index);
         }
     }
+
+
+
+
+
+    public String getTrackDuration(File file) {
+        try (InputStream input = new FileInputStream(file)) {
+            ContentHandler handler = new BodyContentHandler();
+            Metadata metadata = new Metadata();
+            new Mp3Parser().parse(input, handler, metadata, new ParseContext());
+
+            String durationStr = metadata.get("xmpDM:duration");
+            if (durationStr != null) {
+                // Parse the duration as a floating-point number and convert to milliseconds
+                double durationSecs = Double.parseDouble(durationStr);
+                long durationMs = (long) (durationSecs * 1000);
+                return formatDuration(durationMs);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "Unknown";
+    }
+
+    private String formatDuration(long durationMs) {
+        long seconds = durationMs / 1000;
+        long minutes = seconds / 60;
+        seconds %= 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    public BufferedImage getAlbumCover(File file) {
+        if (!file.exists()) {
+            System.out.println("File not found: " + file.getAbsolutePath());
+            return null;
+        }
+
+        try {
+            Mp3File mp3file = new Mp3File(file.getAbsolutePath());
+            if (mp3file.hasId3v2Tag()) {
+                ID3v2 id3v2tag = mp3file.getId3v2Tag();
+                byte[] imageData = id3v2tag.getAlbumImage();
+                if (imageData != null) {
+                    try (ByteArrayInputStream bis = new ByteArrayInputStream(imageData)) {
+                        return ImageIO.read(bis);
+                    }
+                }
+            }
+        } catch (IOException | UnsupportedTagException | InvalidDataException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 }

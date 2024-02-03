@@ -42,6 +42,7 @@
 <?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.Slider?>
 <?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.VBox?>
@@ -56,6 +57,8 @@
           <items>
             <MenuItem fx:id="scanFolderMenuItem" mnemonicParsing="false" onAction="#handleBrowse" text="Open Folder" />
             <MenuItem fx:id="scanFileMenuItem" mnemonicParsing="false" onAction="#handleAddFileToPlaylist" text="Open File" />
+                  <SeparatorMenuItem mnemonicParsing="false" />
+                  <MenuItem fx:id="deleteFromPlaylistMenuItem" mnemonicParsing="false" onAction="#handleDeleteFromPlaylist" text="Delete file from Playlist" />
             <SeparatorMenuItem mnemonicParsing="false" />
             <MenuItem mnemonicParsing="false" text="Preferences…" />
             <SeparatorMenuItem mnemonicParsing="false" />
@@ -111,7 +114,10 @@
             </ToolBar>
             <AnchorPane id="anchor_songinfo" layoutX="324.0" layoutY="14.0" prefHeight="426.0" prefWidth="434.0">
                <children>
-                  <ImageView id="album_img" fx:id="albumCoverImageView" fitHeight="323.0" fitWidth="323.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true" />
+                  <ImageView id="album_img" fx:id="albumCoverImageView" fitHeight="323.0" fitWidth="323.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@../../no_track_img.png" />
+                     </image></ImageView>
                   <Text id="song_name" fx:id="songName" layoutX="14.0" layoutY="358.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Song">
                      <font>
                         <Font name="Microsoft Sans Serif" size="20.0" />
@@ -128,6 +134,7 @@
                      </font>
                   </Text>
                   <Label fx:id="statusLabel" layoutX="14.0" layoutY="394.0" text="Label" />
+                  <Button fx:id="deleteButton" layoutX="300.0" layoutY="390.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="Delete from Playlist" />
                </children>
             </AnchorPane>
       </children>

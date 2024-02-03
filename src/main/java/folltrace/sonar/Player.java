@@ -38,6 +38,14 @@ public class Player {
 
         mediaPlayer.play();
     }
+    public void stopMedia() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose();
+            mediaPlayer = null;
+        }
+    }
+
 
 
 
