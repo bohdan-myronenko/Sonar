@@ -4,6 +4,9 @@ import com.mpatric.mp3agic.ID3v2;
 import com.mpatric.mp3agic.InvalidDataException;
 import com.mpatric.mp3agic.Mp3File;
 import com.mpatric.mp3agic.UnsupportedTagException;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -12,6 +15,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.text.Text;
@@ -45,7 +51,7 @@ public class SonarController implements PlayerCallback {
     private Button toggleRepeatButton;
 
     @FXML
-    private Button toggleShuffleButton;
+    private Button shuffleButton;
 
     @FXML
     private Button stopButton;
@@ -58,6 +64,12 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private Button deleteButton;
+
+    @FXML
+    private Button savePlaylistButton;
+
+    @FXML
+    private Button loadPlaylistButton;
 
 
     // LABELS
@@ -73,6 +85,9 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private Label volumeLabel;
+
+    @FXML
+    private Label currentTimeLabel;
 
     @FXML
     private Text songName;
@@ -120,6 +135,15 @@ public class SonarController implements PlayerCallback {
     private MenuItem repeatOneMenuItem;
 
     @FXML
+    private MenuItem shuffleAllMenuItem;
+
+    @FXML
+    private MenuItem shuffleNextMenuItem;
+
+    @FXML
+    private MenuItem shuffleOffMenuItem;
+
+    @FXML
     private MenuItem aboutUsMenuItem;
 
     @FXML
@@ -127,6 +151,12 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private MenuItem deleteFromPlaylistMenuItem;
+
+    @FXML
+    private MenuItem savePlaylistMenuItem;
+
+    @FXML
+    private MenuItem loadPlaylistMenuItem;
 
 
     // LISTS
@@ -140,12 +170,16 @@ public class SonarController implements PlayerCallback {
 
     // ...
 
+    private Timeline timeline;
 
     private List<String> playlist = new ArrayList<>();
+    private List<String> originalPlaylist = new ArrayList<>();
+
     private Map<String, String> trackNamesToPaths = new HashMap<>();
     private Map<String, String> fileMap = new HashMap<>();
 
     private RepeatState repeatState = RepeatState.OFF;
+    private ShuffleState shuffleState = ShuffleState.OFF;
 
     private MediaPlayer mediaPlayer;
     private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
@@ -230,6 +264,80 @@ public class SonarController implements PlayerCallback {
                 }
             }
         });
+
+        timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> updateCurrentTime()));
+        timeline.setCycleCount(Animation.INDEFINITE);
+
+        fileListView.setCellFactory(lv -> {
+            ListCell<Track> cell = new ListCell<Track>() {
+                @Override
+                protected void updateItem(Track track, boolean empty) {
+                    super.updateItem(track, empty);
+                    if (empty || track == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        setText(track.getName() + " - " + track.getDuration());
+                    }
+                }
+            };
+
+            cell.setOnDragDetected(event -> {
+                if (!cell.isEmpty()) {
+                    Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent cc = new ClipboardContent();
+                    cc.putString(Integer.toString(cell.getIndex()));
+                    db.setContent(cc);
+                }
+            });
+
+            cell.setOnDragOver(event -> {
+                Dragboard db = event.getDragboard();
+                if (db.hasString()) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                }
+            });
+
+            cell.setOnDragDropped(event -> {
+                Dragboard db = event.getDragboard();
+                if (db.hasString()) {
+                    int draggedIndex = Integer.parseInt(db.getString());
+                    int thisIndex = cell.getIndex();
+
+                    // Update the visual representation
+                    Track draggedTrack = fileListView.getItems().remove(draggedIndex);
+                    fileListView.getItems().add(thisIndex, draggedTrack);
+
+                    // Update the underlying data model
+                    String draggedFilePath = playlist.remove(draggedIndex);
+                    playlist.add(thisIndex, draggedFilePath);
+
+                    event.setDropCompleted(true);
+                    fileListView.getSelectionModel().select(thisIndex);
+                    event.consume();
+                }
+            });
+            return cell;
+
+        });
+        fileListView.setOnDragOver(event -> {
+            if (event.getGestureSource() != fileListView && event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+            }
+            event.consume();
+        });
+        fileListView.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                success = true;
+                for (File file : db.getFiles()) {
+                    addFileToPlaylist(file);
+                }
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
     }
 
 
@@ -239,10 +347,12 @@ public class SonarController implements PlayerCallback {
     private void handleTogglePlayPause() {
         if (mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
             mediaPlayer.pause();
+            timeline.pause();
             togglePlayPauseButton.setText("▶");
             statusLabel.setText("Paused");
         } else {
             mediaPlayer.play();
+            timeline.play();
             togglePlayPauseButton.setText("⏸");
             statusLabel.setText("Playing");
         }
@@ -252,6 +362,8 @@ public class SonarController implements PlayerCallback {
     private void handleStop() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
+            timeline.stop();
+            currentTimeLabel.setText("--:--");
             statusLabel.setText("Stopped");
         }
     }
@@ -316,6 +428,30 @@ public class SonarController implements PlayerCallback {
     private void handleRepeatOne() {
         repeatState = RepeatState.REPEAT_ONE;
         updateRepeatModeUI();
+    }
+
+
+    @FXML
+    private void handleShuffleAll(){
+        shuffleState = ShuffleState.SHUFFLE_ALL;
+        shufflePlaylistAll();
+        updateShuffleModeUI();
+    }
+
+    @FXML
+    private void handleShuffleNext(){
+        shuffleState = ShuffleState.SHUFFLE_NEXT;
+        shufflePlaylistNext();
+        updateShuffleModeUI();
+    }
+
+    @FXML
+    private void handleShuffleOff() {
+        shuffleState = ShuffleState.OFF;
+        restoreOriginalOrder();
+        updateListView();
+        selectCurrentlyPlayingTrack();
+        updateShuffleModeUI();
     }
     @FXML
     private void handleNext() {
@@ -396,10 +532,22 @@ public class SonarController implements PlayerCallback {
                     }
                 }
             }
+            if (playlist.isEmpty()) {
+                resetImageViewAndLabels();
+            }
         }
     }
 
 
+    @FXML
+    private void handleSavePlaylist(){
+        savePlaylistAsExtendedM3U();
+    }
+
+    @FXML
+    private void handleLoadPlaylist(){
+        loadPlaylist();
+    }
 
 
 
@@ -410,17 +558,37 @@ public class SonarController implements PlayerCallback {
 
     private void addFileToPlaylist(File file) {
         if (file != null && isSupportedFile(file.getName())) {
-            String trackDuration = getTrackDuration(file);
-            Track track = new Track(file.getName(), trackDuration); // Use actual duration
-            fileListView.getItems().add(track);
+            String filePath = file.getAbsolutePath();
 
-            // Update the map with track name to file path mapping
-            trackNamesToPaths.put(file.getName(), file.getAbsolutePath());
+            // Check if the file path is already in the playlist
+            if (!playlist.contains(filePath)) {
+                String trackDuration = getTrackDuration(file);
+                Track track = new Track(file.getName(), trackDuration); // Use actual duration
+                fileListView.getItems().add(track);
 
-            // Add the file path to the playlist for playback
-            playlist.add(file.getAbsolutePath());
+                trackNamesToPaths.put(file.getName(), filePath);
+                playlist.add(filePath);
+
+                // Add to the original playlist as well
+                if (!originalPlaylist.contains(filePath)) {
+                    originalPlaylist.add(filePath);
+                }
+            }
         }
     }
+
+    private void resetImageViewAndLabels() {
+        String defaultImagePath = "/no_track_img.png";
+        Image defaultImage = new Image(getClass().getResourceAsStream(defaultImagePath));
+
+        albumCoverImageView.setImage(defaultImage);
+        songName.setText("No tracks loaded");
+        albumName.setText("No tracks loaded");
+        authorName.setText("No tracks loaded");
+        statusLabel.setText("No track selected");
+        currentTimeLabel.setText("--:--");
+    }
+
 
 
 
@@ -456,6 +624,21 @@ public class SonarController implements PlayerCallback {
             case REPEAT_ONE:
                 statusLabel.setText("Repeat: One");
                 toggleRepeatButton.setText("🔂");
+                break;
+        }
+    }
+
+    private void updateShuffleModeUI() {
+        // Update the UI based on the current shuffle state
+        switch (shuffleState) {
+            case OFF:
+                statusLabel.setText("Shuffle: Off");
+                break;
+            case SHUFFLE_ALL:
+                statusLabel.setText("Shuffled all tracks");
+                break;
+            case SHUFFLE_NEXT:
+                statusLabel.setText("Shuffled next tracks");
                 break;
         }
     }
@@ -529,14 +712,19 @@ public class SonarController implements PlayerCallback {
 
         if (nextIndex < playlist.size()) {
             playSelectedTrack(nextIndex);
+            fileListView.getSelectionModel().select(nextIndex); // Update selection to next track
         } else if (repeatState == RepeatState.REPEAT_ALL) {
             playSelectedTrack(0); // Start from the beginning
+            fileListView.getSelectionModel().select(0); // Update selection to first track
         } else {
             // Playback stopped, no repeat
             mediaPlayer.stop();
+            updateCurrentTime();
+            timeline.stop();
             statusLabel.setText("Playback stopped");
         }
     }
+
 
 
 
@@ -556,16 +744,38 @@ public class SonarController implements PlayerCallback {
 
 
 
+    private String currentlyPlayingTrackPath = null;
 
     private void playSelectedTrack(int index) {
         if (index >= 0 && index < playlist.size()) {
             String filePath = playlist.get(index);
+            currentlyPlayingTrackPath = filePath; // Store the path of the currently playing track
+
+            // Store the current volume level
+            double currentVolume = mediaPlayer.getVolume();
+
+            // Create a new MediaPlayer for the new track
             player.playMedia(filePath);
+
+            // Set the volume of the new MediaPlayer instance
+            mediaPlayer.setVolume(currentVolume);
+
+            updateCurrentTime();
+            timeline.play();
             fileListView.getSelectionModel().select(index);
         }
     }
 
 
+
+    private void selectCurrentlyPlayingTrack() {
+        if (currentlyPlayingTrackPath != null) {
+            int index = playlist.indexOf(currentlyPlayingTrackPath);
+            if (index != -1) {
+                fileListView.getSelectionModel().select(index);
+            }
+        }
+    }
 
 
 
@@ -580,7 +790,7 @@ public class SonarController implements PlayerCallback {
                 // Parse the duration as a floating-point number and convert to milliseconds
                 double durationSecs = Double.parseDouble(durationStr);
                 long durationMs = (long) (durationSecs * 1000);
-                return formatDuration(durationMs);
+                return formatTrackLength(durationMs);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -588,12 +798,28 @@ public class SonarController implements PlayerCallback {
         return "Unknown";
     }
 
-    private String formatDuration(long durationMs) {
+    private String formatTrackLength(long durationMs) {
         long seconds = durationMs / 1000;
         long minutes = seconds / 60;
         seconds %= 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
+
+    private void updateCurrentTime() {
+        MediaPlayer mp = player.getMediaPlayer();
+        if (mp != null && mp.getStatus() == MediaPlayer.Status.PLAYING) {
+            Duration currentTime = mp.getCurrentTime();
+            currentTimeLabel.setText(formatDuration(currentTime));
+        }
+    }
+
+
+    private String formatDuration(Duration duration) {
+        int minutes = (int) duration.toMinutes();
+        int seconds = (int) duration.toSeconds() % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
 
     public BufferedImage getAlbumCover(File file) {
         if (!file.exists()) {
@@ -616,6 +842,105 @@ public class SonarController implements PlayerCallback {
             e.printStackTrace();
         }
         return null;
+    }
+
+
+    private void shufflePlaylistAll() {
+        if (!playlist.isEmpty()) {
+            int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
+            String currentTrack = playlist.get(currentIndex);
+
+            Collections.shuffle(playlist);
+
+            int newIndex = playlist.indexOf(currentTrack);
+            playlist.remove(newIndex);
+            playlist.add(0, currentTrack);
+
+            updateListView();
+            fileListView.getSelectionModel().select(0); // Select the first item (current track)
+        }
+    }
+
+    private void shufflePlaylistNext() {
+        int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
+        if (currentIndex < playlist.size() - 1) {
+            List<String> remainingTracks = new ArrayList<>(playlist.subList(currentIndex + 1, playlist.size()));
+            Collections.shuffle(remainingTracks);
+            playlist = new ArrayList<>(playlist.subList(0, currentIndex + 1));
+            playlist.addAll(remainingTracks);
+
+            updateListView();
+            fileListView.getSelectionModel().select(currentIndex); // Keep the current track selected
+        }
+    }
+
+
+    private void updateListView() {
+        fileListView.getItems().clear();
+        for (String filePath : playlist) {
+            File file = new File(filePath);
+            String trackName = file.getName();
+            String trackDuration = getTrackDuration(file);
+            Track track = new Track(trackName, trackDuration);
+            fileListView.getItems().add(track);
+        }
+    }
+
+    private void restoreOriginalOrder() {
+        playlist.clear();
+        playlist.addAll(originalPlaylist);
+    }
+
+    public void savePlaylistAsExtendedM3U() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Playlist");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("M3U Files", "*.m3u")
+        );
+
+        File file = fileChooser.showSaveDialog(null); // Replace 'null' with your stage if available
+
+        if (file != null) {
+            try (PrintWriter writer = new PrintWriter(file)) {
+                writer.println("#EXTM3U");
+                for (String filePath : playlist) {
+                    Mp3File mp3file = new Mp3File(filePath);
+                    if (mp3file.hasId3v2Tag()) {
+                        ID3v2 id3v2Tag = mp3file.getId3v2Tag();
+                        String artist = id3v2Tag.getArtist();
+                        String title = id3v2Tag.getTitle();
+                        long duration = mp3file.getLengthInSeconds();
+
+                        writer.println("#EXTINF:" + duration + "," + artist + " - " + title);
+                        writer.println(filePath);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    public void loadPlaylist() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Open Playlist");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("M3U Files", "*.m3u")
+        );
+
+        File file = fileChooser.showOpenDialog(null);
+
+        if (file != null) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("#") && !line.trim().isEmpty()) {
+                        addFileToPlaylist(new File(line));
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }

@@ -57,8 +57,6 @@
           <items>
             <MenuItem fx:id="scanFolderMenuItem" mnemonicParsing="false" onAction="#handleBrowse" text="Open Folder" />
             <MenuItem fx:id="scanFileMenuItem" mnemonicParsing="false" onAction="#handleAddFileToPlaylist" text="Open File" />
-                  <SeparatorMenuItem mnemonicParsing="false" />
-                  <MenuItem fx:id="deleteFromPlaylistMenuItem" mnemonicParsing="false" onAction="#handleDeleteFromPlaylist" text="Delete file from Playlist" />
             <SeparatorMenuItem mnemonicParsing="false" />
             <MenuItem mnemonicParsing="false" text="Preferences…" />
             <SeparatorMenuItem mnemonicParsing="false" />
@@ -75,12 +73,25 @@
                     <items>
                       <MenuItem fx:id="repeatAllMenuItem" mnemonicParsing="false" onAction="#handleRepeatAll" text="All tracks" />
                         <MenuItem fx:id="repeatOneMenuItem" mnemonicParsing="false" onAction="#handleRepeatOne" text="This track" />
-                        <MenuItem fx:id="repeatOffMenuItem" mnemonicParsing="false" onAction="#handleRepeatOff" text="Off" />
+                        <MenuItem fx:id="repeatOffMenuItem" mnemonicParsing="false" onAction="#handleRepeatOff" text="OFF" />
                     </items>
                   </Menu>
-            <MenuItem mnemonicParsing="false" text="Shuffle" />
+                  <Menu mnemonicParsing="false" text="Shuffle">
+                    <items>
+                      <MenuItem fx:id="shuffleAllMenuItem" mnemonicParsing="false" onAction="#handleShuffleAll" text="Shuffle All" />
+                        <MenuItem fx:id="shuffleNextMenuItem" mnemonicParsing="false" onAction="#handleShuffleNext" text="Shuffle Next" />
+                        <MenuItem fx:id="shuffleOffMenuItem" mnemonicParsing="false" onAction="#handleShuffleOff" text="OFF" />
+                    </items>
+                  </Menu>
           </items>
         </Menu>
+            <Menu mnemonicParsing="false" text="Playlist">
+              <items>
+                <MenuItem fx:id="loadPlaylistMenuItem" mnemonicParsing="false" onAction="#handleLoadPlaylist" text="Load" />
+                  <MenuItem fx:id="savePlaylistMenuItem" mnemonicParsing="false" onAction="#handleSavePlaylist" text="Save" />
+                  <MenuItem fx:id="deleteFromPlaylistMenuItem" mnemonicParsing="false" onAction="#handleDeleteFromPlaylist" text="Delete file from Playlist" />
+              </items>
+            </Menu>
         <Menu mnemonicParsing="false" text="Help">
           <items>
             <MenuItem fx:id="aboutUsMenuItem" mnemonicParsing="false" onAction="#handleAboutUs" text="About Sonar..." />
@@ -101,20 +112,25 @@
             <ToolBar layoutX="2.0" layoutY="440.0" prefHeight="38.0" prefWidth="766.0">
               <items>
                   <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" text="🔁" />
-                  <Button id="shuffle_btn" fx:id="toggleShuffleButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="28.0" text="🔀" />
+                  <Button id="shuffle_btn" fx:id="shuffleButton" mnemonicParsing="false" onMouseReleased="#handleShuffleAll" prefHeight="26.0" prefWidth="28.0" text="🔀" />
                 <Button id="stop_btn" fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" text="⏹" />
                   <Button id="play_btn" fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" text="⏮" />
                   <Button id="play_btn" fx:id="togglePlayPauseButton" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="26.0" prefWidth="28.0" text="⏯" />
                   <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="26.0" prefWidth="28.0" text="⏭" />
-                  <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="411.0" />
+                  <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="377.0" />
+                  <Label fx:id="currentTimeLabel" text="--:--">
+                     <font>
+                        <Font name="Consolas" size="12.0" />
+                     </font>
+                  </Label>
                   <Text strokeType="OUTSIDE" strokeWidth="0.0" text="🔊" />
-                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" prefHeight="14.0" prefWidth="97.0" value="0.5" />
+                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" prefHeight="14.0" prefWidth="90.0" value="0.5" />
                   <Label fx:id="volumeLabel" text="0%" />
               </items>
             </ToolBar>
             <AnchorPane id="anchor_songinfo" layoutX="324.0" layoutY="14.0" prefHeight="426.0" prefWidth="434.0">
                <children>
-                  <ImageView id="album_img" fx:id="albumCoverImageView" fitHeight="323.0" fitWidth="323.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true">
+                  <ImageView id="album_img" fx:id="albumCoverImageView" fitHeight="309.0" fitWidth="296.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true">
                      <image>
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
@@ -134,7 +150,9 @@
                      </font>
                   </Text>
                   <Label fx:id="statusLabel" layoutX="14.0" layoutY="394.0" text="Label" />
-                  <Button fx:id="deleteButton" layoutX="300.0" layoutY="390.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="Delete from Playlist" />
+                  <Button fx:id="deleteButton" layoutX="323.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="Delete from Playlist" />
+                  <Button fx:id="savePlaylistButton" layoutX="323.0" layoutY="40.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" text="Save playlist" />
+                  <Button fx:id="loadPlaylistButton" layoutX="323.0" layoutY="66.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="Load playlist" />
                </children>
             </AnchorPane>
       </children>

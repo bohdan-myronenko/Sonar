@@ -14,19 +14,26 @@ public class Player {
         this.callback = callback;
     }
     public void playMedia(String filePath) {
+        double currentVolume = 1.0; // Default volume level
+
+        // Check if a MediaPlayer already exists and store its volume level
         if (mediaPlayer != null) {
+            currentVolume = mediaPlayer.getVolume();
             mediaPlayer.stop();
             mediaPlayer.dispose();
         }
 
         Media media = new Media(new File(filePath).toURI().toString());
-        mediaPlayer = new MediaPlayer(media);
+        this.mediaPlayer = new MediaPlayer(media);
+
+        // Set the volume of the new MediaPlayer to the stored volume level
+        mediaPlayer.setVolume(currentVolume);
 
         mediaPlayer.setOnEndOfMedia(() -> {
             if (callback.getRepeatState() != RepeatState.REPEAT_ONE) {
                 callback.onNextTrack();
             } else {
-                mediaPlayer.seek(Duration.ZERO); // Restart the current track in 'Repeat One' mode
+                mediaPlayer.seek(Duration.ZERO);
                 mediaPlayer.play();
             }
         });
@@ -35,9 +42,9 @@ public class Player {
             callback.onMediaReady(mediaPlayer);
         });
 
-
         mediaPlayer.play();
     }
+
     public void stopMedia() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
@@ -50,6 +57,6 @@ public class Player {
 
 
     public MediaPlayer getMediaPlayer(){
-        return mediaPlayer;
+        return this.mediaPlayer;
     }
 }

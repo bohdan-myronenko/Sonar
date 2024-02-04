@@ -18,6 +18,7 @@ public class SonarMain extends Application {
         Parent root = FXMLLoader.load(getClass().getResource("/folltrace/sonar/player.fxml"));
         primaryStage.setScene(new Scene(root));
         primaryStage.getIcons().add(new Image("/logo.png"));
+        primaryStage.setResizable(false);
         primaryStage.show();
     }
 
