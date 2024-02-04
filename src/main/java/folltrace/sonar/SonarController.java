@@ -104,6 +104,9 @@ public class SonarController implements PlayerCallback {
     @FXML
     private ImageView albumCoverImageView;
 
+    @FXML
+    private ImageView soundIcon;
+
 
     //MENU ITEMS
 
@@ -181,6 +184,8 @@ public class SonarController implements PlayerCallback {
     private RepeatState repeatState = RepeatState.OFF;
     private ShuffleState shuffleState = ShuffleState.OFF;
 
+    private double previousVolume = 50;
+
     private MediaPlayer mediaPlayer;
     private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
 
@@ -193,11 +198,29 @@ public class SonarController implements PlayerCallback {
     @FXML
     public void initialize() {
         player = new Player(this);
-
-        // Load the music file from the resources folder
-        String musicPath = "/music.mp3"; // Path relative to the classpath
+        String musicPath = "/music.mp3";
         Media media = new Media(getClass().getResource(musicPath).toExternalForm());
         mediaPlayer = new MediaPlayer(media);
+
+        // Set up hover effects for buttons
+        nextButton.setText(null);
+        UIManager.setHoverEffectToButton(nextButton, "/icons/next.png", "/icons/next_solid.png", 15, 15);
+        prevButton.setText(null);
+        UIManager.setHoverEffectToButton(prevButton, "/icons/prev.png", "/icons/prev_solid.png", 15, 15);
+        shuffleButton.setText(null);
+        UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
+        toggleRepeatButton.setText(null);
+        UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_all.png", 15, 15);
+        togglePlayPauseButton.setText(null);
+        UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+        stopButton.setText(null);
+        UIManager.setHoverEffectToButton(stopButton,"/icons/stop.png", "/icons/stop_solid.png", 15, 15);
+        deleteButton.setText(null);
+        UIManager.setImageToButton(deleteButton, "/icons/delete.png", 24, 24);
+        savePlaylistButton.setText(null);
+        UIManager.setImageToButton(savePlaylistButton, "/icons/save.png", 24, 24);
+        loadPlaylistButton.setText(null);
+        UIManager.setImageToButton(loadPlaylistButton, "/icons/load.png", 24, 24);
 
         // Set initial text for labels and status
         songName.setText("No tracks loaded");
@@ -206,6 +229,7 @@ public class SonarController implements PlayerCallback {
         statusLabel.setText("No track selected");
         volumeLabel.setText((int) Math.round(volumeSlider.getValue() * 100) + "%");
 
+
         // Initialize volume slider listener
         volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             if (mediaPlayer != null) {
@@ -213,7 +237,11 @@ public class SonarController implements PlayerCallback {
             }
             int volumePercent = (int) Math.round(newValue.doubleValue() * 100);
             volumeLabel.setText(volumePercent + "%");
+
+            // Update sound icon based on volume level
+            updateVolumeIcon(newValue.doubleValue() * 100);
         });
+
 
         mediaPlayer.setOnReady(() -> {
             seekSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
@@ -338,6 +366,21 @@ public class SonarController implements PlayerCallback {
             event.setDropCompleted(success);
             event.consume();
         });
+        soundIcon.setOnMouseClicked(event -> {
+            if (mediaPlayer != null) {
+                if (mediaPlayer.getVolume() > 0) {
+                    previousVolume = mediaPlayer.getVolume() * 100;
+                    mediaPlayer.setVolume(0);
+                    volumeSlider.setValue(0);
+                    updateVolumeIcon(0);
+                } else {
+                    double restoredVolume = previousVolume / 100;
+                    mediaPlayer.setVolume(restoredVolume);
+                    volumeSlider.setValue(previousVolume);
+                    updateVolumeIcon(restoredVolume);
+                }
+            }
+        });
     }
 
 
@@ -348,15 +391,15 @@ public class SonarController implements PlayerCallback {
         if (mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
             mediaPlayer.pause();
             timeline.pause();
-            togglePlayPauseButton.setText("▶");
-            statusLabel.setText("Paused");
+            updatePlayPauseButton(false);
         } else {
             mediaPlayer.play();
             timeline.play();
-            togglePlayPauseButton.setText("⏸");
-            statusLabel.setText("Playing");
+            updatePlayPauseButton(true);
         }
     }
+
+
 
     @FXML
     private void handleStop() {
@@ -474,10 +517,9 @@ public class SonarController implements PlayerCallback {
             Stage aboutUsStage = new Stage();
             aboutUsStage.getIcons().add(new Image("/logo.png"));
             aboutUsStage.setTitle("About Us");
-            aboutUsStage.initModality(Modality.APPLICATION_MODAL); // Makes the window modal
+            aboutUsStage.initModality(Modality.APPLICATION_MODAL);
             aboutUsStage.setScene(new Scene(aboutUsRoot));
 
-            // Show the About Us window and wait for it to be closed
             aboutUsStage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();
@@ -615,15 +657,15 @@ public class SonarController implements PlayerCallback {
         switch (repeatState) {
             case OFF:
                 statusLabel.setText("Repeat: Off");
-                toggleRepeatButton.setText("✕");
+                UIManager.setImageToButton(toggleRepeatButton, "/icons/off.png", 15, 15);
                 break;
             case REPEAT_ALL:
                 statusLabel.setText("Repeat: All");
-                toggleRepeatButton.setText("🔁");
+                UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_all.png", 15, 15);
                 break;
             case REPEAT_ONE:
                 statusLabel.setText("Repeat: One");
-                toggleRepeatButton.setText("🔂");
+                UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_one.png", 15, 15);
                 break;
         }
     }
@@ -633,15 +675,34 @@ public class SonarController implements PlayerCallback {
         switch (shuffleState) {
             case OFF:
                 statusLabel.setText("Shuffle: Off");
+                UIManager.setImageToButton(shuffleButton, "/icons/off.png", 15, 15);
                 break;
             case SHUFFLE_ALL:
                 statusLabel.setText("Shuffled all tracks");
+                UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
                 break;
             case SHUFFLE_NEXT:
                 statusLabel.setText("Shuffled next tracks");
+                UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
                 break;
         }
     }
+
+    private void updateVolumeIcon(double volume) {
+        String imagePath;
+        if (volume == 0) {
+            imagePath = "/icons/vol_mute.png";
+        } else if (volume < 30) {
+            imagePath = "/icons/vol_min.png";
+        } else if (volume < 70) {
+            imagePath = "/icons/vol_low.png";
+        } else {
+            imagePath = "/icons/vol_max.png";
+        }
+        Image image = new Image(getClass().getResourceAsStream(imagePath));
+        soundIcon.setImage(image);
+    }
+
     public void updateSongInfo(Media media) {
         if (media.getMetadata().containsKey("title")) {
             songName.setText(media.getMetadata().get("title").toString());
@@ -699,10 +760,19 @@ public class SonarController implements PlayerCallback {
             }
         });
 
-        togglePlayPauseButton.setText("⏸");
+        UIManager.setImageToButton(togglePlayPauseButton, "/icons/pause.png", 15, 15);
         statusLabel.setText("Playing");
     }
 
+
+    private void updatePlayPauseButton(boolean isPlaying) {
+        togglePlayPauseButton.setText(null);
+        if (isPlaying) {
+            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/pause.png", "/icons/pause_solid.png", 15, 15);
+        } else {
+            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+        }
+    }
 
 
     @Override
@@ -763,6 +833,10 @@ public class SonarController implements PlayerCallback {
             updateCurrentTime();
             timeline.play();
             fileListView.getSelectionModel().select(index);
+
+            // Clear the button text and set the appropriate icon
+            togglePlayPauseButton.setText(null);
+            updatePlayPauseButton(true);
         }
     }
 
@@ -898,7 +972,7 @@ public class SonarController implements PlayerCallback {
                 new FileChooser.ExtensionFilter("M3U Files", "*.m3u")
         );
 
-        File file = fileChooser.showSaveDialog(null); // Replace 'null' with your stage if available
+        File file = fileChooser.showSaveDialog(null);
 
         if (file != null) {
             try (PrintWriter writer = new PrintWriter(file)) {

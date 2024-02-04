@@ -19,6 +19,7 @@ public class SonarMain extends Application {
         primaryStage.setScene(new Scene(root));
         primaryStage.getIcons().add(new Image("/logo.png"));
         primaryStage.setResizable(false);
+        primaryStage.setTitle("Sonar");
         primaryStage.show();
     }
 
