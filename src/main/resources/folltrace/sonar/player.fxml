@@ -33,6 +33,7 @@
 -->
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckMenuItem?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Menu?>
@@ -45,13 +46,42 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
 
-<VBox prefHeight="663.0" prefWidth="950.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="folltrace.sonar.SonarController">
+<VBox prefHeight="692.0" prefWidth="950.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="folltrace.sonar.SonarController">
   <children>
-    <MenuBar VBox.vgrow="NEVER">
+      <AnchorPane prefHeight="0.0" prefWidth="950.0">
+         <children>
+            <HBox alignment="TOP_RIGHT" layoutY="3.0" prefHeight="26.0" prefWidth="947.0" styleClass="window-buttons">
+               <children>
+                  <AnchorPane fx:id="dragPane" prefHeight="26.0" prefWidth="860.0" styleClass="title-bar">
+                     <children>
+                        <Label layoutX="47.0" layoutY="2.0" prefHeight="20.0" prefWidth="90.0" text="Sonar">
+                           <font>
+                              <Font size="15.0" />
+                           </font>
+                        </Label>
+                        <ImageView fitHeight="20.0" fitWidth="20.0" layoutX="15.0" layoutY="3.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@../../logo.png" />
+                           </image>
+                        </ImageView>
+                     </children>
+                  </AnchorPane>
+                  <Button fx:id="hideButton" mnemonicParsing="false" onMouseReleased="#handleHideApp" text="__">
+                     <font>
+                        <Font name="System Bold" size="12.0" />
+                     </font>
+                  </Button>
+                  <Button fx:id="minimizeButton" mnemonicParsing="false" onMouseReleased="#handleShrink" text="↔" />
+                  <Button fx:id="closeAppButton" mnemonicParsing="false" onMouseReleased="#handleQuitAction" styleClass="title-bar" text="❌" />
+               </children>
+            </HBox>
+         </children>
+      </AnchorPane>
+    <MenuBar prefHeight="56.0" prefWidth="950.0" VBox.vgrow="NEVER">
       <menus>
         <Menu mnemonicParsing="false" text="File">
           <items>
@@ -90,6 +120,12 @@
                   <MenuItem fx:id="deleteFromPlaylistMenuItem" mnemonicParsing="false" onAction="#handleDeleteFromPlaylist" text="Delete file from Playlist" />
               </items>
             </Menu>
+            <Menu mnemonicParsing="false" text="Settings">
+              <items>
+                  <CheckMenuItem fx:id="darkThemeCheck" mnemonicParsing="false" onAction="#handleThemeChange" text="Dark theme" />
+                  <CheckMenuItem fx:id="minimisedCheck" disable="true" mnemonicParsing="false" text="Minimised" />
+              </items>
+            </Menu>
         <Menu mnemonicParsing="false" text="Help">
           <items>
             <MenuItem fx:id="aboutUsMenuItem" mnemonicParsing="false" onAction="#handleAboutUs" text="About Sonar..." />
@@ -99,37 +135,37 @@
     </MenuBar>
     <AnchorPane maxHeight="-1.0" maxWidth="-1.0" prefHeight="374.0" prefWidth="771.0" VBox.vgrow="ALWAYS">
       <children>
-            <ScrollPane fx:id="fileScrollPane" layoutX="14.0" layoutY="14.0" prefHeight="577.0" prefWidth="310.0">
+            <ScrollPane fx:id="fileScrollPane" layoutX="14.0" layoutY="14.0" prefHeight="578.0" prefWidth="378.0">
               <content>
-                <AnchorPane id="track_list" minHeight="0.0" minWidth="0.0" prefHeight="576.0" prefWidth="308.0">
+                <AnchorPane id="track_list" minHeight="0.0" minWidth="0.0" prefHeight="576.0" prefWidth="376.0">
                      <children>
-                        <ListView fx:id="fileListView" prefHeight="578.0" prefWidth="310.0" />
+                        <ListView fx:id="fileListView" prefHeight="578.0" prefWidth="378.0" />
                      </children></AnchorPane>
               </content>
             </ScrollPane>
-            <ToolBar layoutX="1.0" layoutY="594.0" prefHeight="42.0" prefWidth="947.0">
+            <ToolBar id="toolbar" layoutX="1.0" layoutY="594.0" prefHeight="42.0" prefWidth="947.0" styleClass="player-toolbar">
               <items>
-                  <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" text="🔁">
+                  <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" styleClass="player-button" text="🔁">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button id="shuffle_btn" fx:id="shuffleButton" mnemonicParsing="false" onMouseReleased="#handleShuffleAll" prefHeight="26.0" prefWidth="28.0" text="🔀">
+                  <Button fx:id="shuffleButton" mnemonicParsing="false" onMouseReleased="#handleShuffleAll" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="🔀">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                <Button id="stop_btn" fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" text="⏹">
+                <Button fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" styleClass="player-button" text="⏹">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button id="play_btn" fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" text="⏮">
+                  <Button fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏮">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button id="play_btn" fx:id="togglePlayPauseButton" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="26.0" prefWidth="28.0" text="⏯">
+                  <Button fx:id="togglePlayPauseButton" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏯">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="26.0" prefWidth="28.0" text="⏭">
+                  <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏭">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
@@ -148,43 +184,46 @@
                   <Label fx:id="volumeLabel" text="0%" />
               </items>
             </ToolBar>
-            <AnchorPane id="anchor_songinfo" layoutX="324.0" layoutY="14.0" prefHeight="578.0" prefWidth="623.0">
+            <AnchorPane id="anchor_songinfo" layoutX="395.0" layoutY="14.0" prefHeight="578.0" prefWidth="552.0">
                <children>
                   <ImageView id="album_img" fx:id="albumCoverImageView" fitHeight="533.0" fitWidth="455.0" layoutX="14.0" layoutY="14.0" pickOnBounds="true" preserveRatio="true">
                      <image>
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
-                  <Text id="song_name" fx:id="songName" layoutX="14.0" layoutY="510.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Song">
+                  <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" text="Status Label" />
+                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="📀">
                      <font>
-                        <Font name="Microsoft Sans Serif" size="20.0" />
+                        <Font size="24.0" />
                      </font>
-                  </Text>
-                  <Text id="author_name" fx:id="authorName" layoutX="14.0" layoutY="527.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Author">
+                  </Button>
+                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" text="💾">
+                     <font>
+                        <Font size="24.0" />
+                     </font>
+                  </Button>
+                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="❌">
+                     <font>
+                        <Font size="24.0" />
+                     </font>
+                  </Button>
+                  <Label fx:id="songName" layoutX="11.0" layoutY="490.0" text="Song">
+                     <font>
+                        <Font name="Microsoft Sans Serif" size="18.0" />
+                     </font>
+                  </Label>
+                  <Label fx:id="authorName" layoutX="12.0" layoutY="512.0" text="Artist">
                      <font>
                         <Font name="Microsoft Sans Serif" size="16.0" />
                      </font>
-                  </Text>
-                  <Text id="album_name" fx:id="albumName" layoutX="14.0" layoutY="543.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Album">
+                  </Label>
+                  <Label fx:id="albumName" layoutX="12.0" layoutY="536.0" text="Album">
                      <font>
                         <Font name="Microsoft Sans Serif" size="14.0" />
                      </font>
-                  </Text>
-                  <Label fx:id="statusLabel" layoutX="14.0" layoutY="546.0" text="Label" />
-                  <Button fx:id="loadPlaylistButton" layoutX="553.0" layoutY="123.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="📀">
-                     <font>
-                        <Font size="24.0" />
-                     </font>
-                  </Button>
-                  <Button fx:id="savePlaylistButton" layoutX="553.0" layoutY="72.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" text="💾">
-                     <font>
-                        <Font size="24.0" />
-                     </font>
-                  </Button>
-                  <Button fx:id="deleteButton" layoutX="553.0" layoutY="20.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="❌">
-                     <font>
-                        <Font size="24.0" />
-                     </font>
-                  </Button>
+                  </Label>
+                  <Label layoutX="478.0" layoutY="65.0" text="Delete track" textAlignment="CENTER" />
+                  <Label layoutX="483.0" layoutY="134.0" text="Save .m3u" textAlignment="CENTER" />
+                  <Label layoutX="482.0" layoutY="203.0" text="Load .m3u" textAlignment="CENTER" />
                </children>
             </AnchorPane>
       </children>

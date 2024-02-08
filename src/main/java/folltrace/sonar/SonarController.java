@@ -18,13 +18,12 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import javafx.scene.text.Text;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.*;
+import javafx.scene.Scene;
 import javafx.util.Duration;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
@@ -71,6 +70,15 @@ public class SonarController implements PlayerCallback {
     @FXML
     private Button loadPlaylistButton;
 
+    @FXML
+    private Button closeAppButton;
+
+    @FXML
+    private Button minimizeButton;
+
+    @FXML
+    private Button hideButton;
+
 
     // LABELS
 
@@ -90,14 +98,14 @@ public class SonarController implements PlayerCallback {
     private Label currentTimeLabel;
 
     @FXML
-    private Text songName;
+    private Label songName;
 
     @FXML
-    private Text albumName;
+    private Label albumName;
 
     @FXML
 
-    private Text authorName;
+    private Label authorName;
 
 
     // IMAGES
@@ -161,6 +169,12 @@ public class SonarController implements PlayerCallback {
     @FXML
     private MenuItem loadPlaylistMenuItem;
 
+    @FXML
+    private CheckMenuItem darkThemeCheck;
+
+    @FXML
+    private CheckMenuItem minimisedCheck;
+
 
     // LISTS
 
@@ -172,6 +186,17 @@ public class SonarController implements PlayerCallback {
 
 
     // ...
+
+    @FXML
+    private HBox titleBar;
+
+    @FXML
+    private AnchorPane dragPane;
+
+    // ...
+    private Scene scene;
+
+
 
     private Timeline timeline;
 
@@ -185,15 +210,39 @@ public class SonarController implements PlayerCallback {
     private ShuffleState shuffleState = ShuffleState.OFF;
 
     private double previousVolume = 50;
+    private double xOffset = 0;
+    private double yOffset = 0;
 
     private MediaPlayer mediaPlayer;
+    private Player player;
     private static final List<String> SUPPORTED_FILE_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
 
     @Override
     public RepeatState getRepeatState() {
         return this.repeatState;
     }
-    private Player player;
+
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
+
+    private Stage primaryStage;
+
+    private MiniController miniController;
+
+    public void setMiniController(MiniController miniController) {
+        this.miniController = miniController;
+    }
+
+    public MediaPlayer getMediaPlayer() {
+        if (player != null) {
+            return player.getMediaPlayer();
+        }
+        return null;
+    }
+    public void setPrimaryStage(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+    }
 
     @FXML
     public void initialize() {
@@ -229,6 +278,17 @@ public class SonarController implements PlayerCallback {
         statusLabel.setText("No track selected");
         volumeLabel.setText((int) Math.round(volumeSlider.getValue() * 100) + "%");
 
+
+        dragPane.setOnMousePressed(event -> {
+            xOffset = event.getSceneX();
+            yOffset = event.getSceneY();
+        });
+
+        dragPane.setOnMouseDragged(event -> {
+            Stage stage = (Stage) dragPane.getScene().getWindow();
+            stage.setX(event.getScreenX() - xOffset);
+            stage.setY(event.getScreenY() - yOffset);
+        });
 
         // Initialize volume slider listener
         volumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
@@ -367,14 +427,19 @@ public class SonarController implements PlayerCallback {
             event.consume();
         });
         soundIcon.setOnMouseClicked(event -> {
+            // System.out.println("Mouse clicked");
             if (mediaPlayer != null) {
+                //System.out.println("Media player is not null");
                 if (mediaPlayer.getVolume() > 0) {
-                    previousVolume = mediaPlayer.getVolume() * 100;
+                    //System.out.println("Current volume: " + mediaPlayer.getVolume());
+                    previousVolume = mediaPlayer.getVolume();
                     mediaPlayer.setVolume(0);
                     volumeSlider.setValue(0);
                     updateVolumeIcon(0);
+                    //System.out.println("Muted volume. Previous volume is " + previousVolume);
                 } else {
-                    double restoredVolume = previousVolume / 100;
+                    double restoredVolume = previousVolume;
+                    //System.out.println("Unmuting... restored volume will be " + restoredVolume);
                     mediaPlayer.setVolume(restoredVolume);
                     volumeSlider.setValue(previousVolume);
                     updateVolumeIcon(restoredVolume);
@@ -387,7 +452,7 @@ public class SonarController implements PlayerCallback {
 
     // HANDLERS
     @FXML
-    private void handleTogglePlayPause() {
+    protected void handleTogglePlayPause() {
         if (mediaPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
             mediaPlayer.pause();
             timeline.pause();
@@ -402,7 +467,7 @@ public class SonarController implements PlayerCallback {
 
 
     @FXML
-    private void handleStop() {
+    void handleStop() {
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             timeline.stop();
@@ -438,7 +503,7 @@ public class SonarController implements PlayerCallback {
 
 
     @FXML
-    private void handleRepeatToggle() {
+    protected void handleRepeatToggle() {
         switch (repeatState) {
             case OFF:
                 repeatState = RepeatState.REPEAT_ALL;
@@ -475,7 +540,7 @@ public class SonarController implements PlayerCallback {
 
 
     @FXML
-    private void handleShuffleAll(){
+    protected void handleShuffleAll(){
         shuffleState = ShuffleState.SHUFFLE_ALL;
         shufflePlaylistAll();
         updateShuffleModeUI();
@@ -489,13 +554,28 @@ public class SonarController implements PlayerCallback {
     }
 
     @FXML
-    private void handleShuffleOff() {
+    protected void handleShuffleOff() {
         shuffleState = ShuffleState.OFF;
         restoreOriginalOrder();
         updateListView();
         selectCurrentlyPlayingTrack();
         updateShuffleModeUI();
     }
+
+    public void toggleShuffle() {
+        if (shuffleState == ShuffleState.OFF) {
+            shuffleState = ShuffleState.SHUFFLE_ALL; // or any other shuffle state you want
+            shufflePlaylistAll();
+            updateShuffleModeUI();
+        } else {
+            shuffleState = ShuffleState.OFF;
+            restoreOriginalOrder();
+            updateListView();
+            selectCurrentlyPlayingTrack();
+            updateShuffleModeUI();
+        }
+    }
+
     @FXML
     private void handleNext() {
         onNextTrack();
@@ -528,10 +608,37 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     private void handleQuitAction() {
-        // Get the current stage and close it
-        Stage stage = (Stage) quitMenuItem.getParentPopup().getOwnerWindow();
+        Stage stage = (Stage) closeAppButton.getScene().getWindow();
+        // Close the stage.
         stage.close();
+
     }
+
+    @FXML
+    private void handleHideApp(){
+        Stage stage = (Stage)hideButton.getScene().getWindow();
+        stage.setIconified(!stage.isIconified());
+    }
+
+    @FXML
+    private void handleShrink() throws IOException {
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/folltrace/sonar/player_minimised.fxml"));
+        Parent newRoot = fxmlLoader.load();
+        MiniController miniController = fxmlLoader.getController();
+        miniController.setSonarController(this);
+
+        Stage shrinkStage = new Stage();
+        Scene newScene = new Scene(newRoot);
+
+        shrinkStage.getIcons().add(new Image("/logo.png"));
+        shrinkStage.setResizable(false);
+        shrinkStage.setTitle("Sonar");
+        shrinkStage.setScene(newScene);
+        shrinkStage.initStyle(StageStyle.UNDECORATED);
+        shrinkStage.show();
+        primaryStage.hide();
+    }
+
 
     @FXML
     private void handleDeleteFromPlaylist() {
@@ -575,7 +682,15 @@ public class SonarController implements PlayerCallback {
                 }
             }
             if (playlist.isEmpty()) {
-                resetImageViewAndLabels();
+                String defaultImagePath = "/no_track_img.png";
+                Image defaultImage = new Image(getClass().getResourceAsStream(defaultImagePath));
+
+                albumCoverImageView.setImage(defaultImage);
+                songName.setText("No tracks loaded");
+                albumName.setText("No tracks loaded");
+                authorName.setText("No tracks loaded");
+                statusLabel.setText("No track selected");
+                currentTimeLabel.setText("--:--");
             }
         }
     }
@@ -591,10 +706,10 @@ public class SonarController implements PlayerCallback {
         loadPlaylist();
     }
 
-
-
-
-
+    @FXML
+    public void handleThemeChange() {
+        UIManager.changeTheme(scene, darkThemeCheck.isSelected());
+    }
 
     // METHODS
 
@@ -619,17 +734,14 @@ public class SonarController implements PlayerCallback {
         }
     }
 
-    private void resetImageViewAndLabels() {
-        String defaultImagePath = "/no_track_img.png";
-        Image defaultImage = new Image(getClass().getResourceAsStream(defaultImagePath));
-
-        albumCoverImageView.setImage(defaultImage);
-        songName.setText("No tracks loaded");
-        albumName.setText("No tracks loaded");
-        authorName.setText("No tracks loaded");
-        statusLabel.setText("No track selected");
-        currentTimeLabel.setText("--:--");
+    public void showMainWindow() {
+        if (primaryStage != null) {
+            primaryStage.show();
+            primaryStage.toFront();
+        }
     }
+
+
 
 
 
@@ -795,6 +907,25 @@ public class SonarController implements PlayerCallback {
         }
     }
 
+    public void onVolumeChanged(double newVolume) {
+        // Update the volume on the MediaPlayer
+        if (mediaPlayer != null) {
+            mediaPlayer.setVolume(newVolume / 100); // Assuming newVolume is a percentage
+        }
+
+        // Update the main window's volume slider
+        if (volumeSlider != null) {
+            volumeSlider.setValue(newVolume);
+        }
+
+        // Update the mini window's volume slider if it's open
+        if (miniController != null) {
+            miniController.updateVolumeSlider(newVolume);
+        }
+
+        // Update the volume icon or other UI components if necessary
+        updateVolumeIcon(newVolume);
+    }
 
 
 

@@ -1,5 +1,6 @@
 package folltrace.sonar;
 
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -53,5 +54,21 @@ public class UIManager {
         Button button = new Button();
         setImageToButton(button, imagePath, width, height);
         return button;
+    }
+
+
+    /**
+     * Changes the JavaFX style for a scene using a CSS file.
+     *
+     * @param scene
+     * @param isChecked
+     */
+    public static void changeTheme(Scene scene, boolean isChecked){
+        if (isChecked){
+            scene.getStylesheets().clear();
+            scene.getStylesheets().add(UIManager.class.getResource("/dark.css").toExternalForm());
+        } else {
+            scene.getStylesheets().clear();
+        }
     }
 }
