@@ -1,5 +1,6 @@
 package folltrace.sonar;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -71,7 +72,11 @@ public class MiniController {
             stage.setX(event.getScreenX() - xOffset);
             stage.setY(event.getScreenY() - yOffset);
         });
-
+        miniSeekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
+            if (!isChanging) {
+                sonarController.updateMediaPlayerTime(miniSeekSlider.getValue());
+            }
+        });
     }
 
     public void updateVolumeSlider(double volume) {
@@ -80,7 +85,29 @@ public class MiniController {
         }
     }
 
+    public void updateSeekSliderMax(double maxDuration) {
+        if (miniSeekSlider != null) {
+            miniSeekSlider.setMax(maxDuration);
+        }
+    }
 
+    public void updateSeekSliderValue(double currentTime) {
+        if (miniSeekSlider != null) {
+            Platform.runLater(() -> {
+                miniSeekSlider.setValue(currentTime);
+            });
+        }
+    }
+
+    public void updateSeekSlider(double value) {
+        miniSeekSlider.setValue(value);
+    }
+
+
+
+    public void setSliderMax(double max) {
+        miniSeekSlider.setMax(max);
+    }
     public void setSonarController(SonarController sonarController) {
         this.sonarController = sonarController;
     }
