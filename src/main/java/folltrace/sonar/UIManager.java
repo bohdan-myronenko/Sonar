@@ -10,8 +10,7 @@ public class UIManager {
     private static boolean isHovering = false;
 
     /**
-     * Loads an image and sets it to a button.
-     *
+     * Sets an image to a button.
      * @param button The button to set the image on.
      * @param imagePath The path to the image resource.
      * @param width The width of the image.

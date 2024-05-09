@@ -70,13 +70,13 @@
                         </ImageView>
                      </children>
                   </AnchorPane>
-                  <Button fx:id="hideButton" mnemonicParsing="false" onMouseReleased="#handleHideApp" text="__">
+                  <Button fx:id="hideButton" mnemonicParsing="false" onMouseReleased="#handleHideApp" prefHeight="26.0" prefWidth="36.0" styleClass="main-pane-button" text="__">
                      <font>
                         <Font name="System Bold" size="12.0" />
                      </font>
                   </Button>
-                  <Button fx:id="minimizeButton" mnemonicParsing="false" onMouseReleased="#handleShrink" text="↔" />
-                  <Button fx:id="closeAppButton" mnemonicParsing="false" onMouseReleased="#handleQuitAction" styleClass="title-bar" text="❌" />
+                  <Button fx:id="minimizeButton" mnemonicParsing="false" onMouseReleased="#handleShrink" prefHeight="26.0" prefWidth="36.0" styleClass="main-pane-button" text="↔" />
+                  <Button fx:id="closeAppButton" mnemonicParsing="false" onMouseReleased="#handleQuitAction" prefHeight="26.0" prefWidth="36.0" styleClass="main-pane-button" text="❌" />
                </children>
             </HBox>
          </children>
@@ -169,7 +169,7 @@
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="503.0" />
+                  <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="495.0" />
                   <Label fx:id="currentTimeLabel" text="--:--">
                      <font>
                         <Font name="Consolas" size="12.0" />
@@ -191,17 +191,17 @@
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
                   <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" text="Status Label" />
-                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="📀">
+                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" styleClass="main-pane-button" text="📀">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" text="💾">
+                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" styleClass="main-pane-button" text="💾">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="❌">
+                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" styleClass="main-pane-button" text="❌">
                      <font>
                         <Font size="24.0" />
                      </font>

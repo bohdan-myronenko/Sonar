@@ -196,6 +196,8 @@ public class SonarController implements PlayerCallback {
     // ...
     private Scene scene;
 
+    private Boolean isDarkTheme;
+
 
 
     private Timeline timeline;
@@ -250,6 +252,7 @@ public class SonarController implements PlayerCallback {
         String musicPath = "/music.mp3";
         Media media = new Media(getClass().getResource(musicPath).toExternalForm());
         mediaPlayer = new MediaPlayer(media);
+        isDarkTheme = false;
 
         // Set up hover effects for buttons
         nextButton.setText(null);
@@ -708,7 +711,47 @@ public class SonarController implements PlayerCallback {
 
     @FXML
     public void handleThemeChange() {
-        UIManager.changeTheme(scene, darkThemeCheck.isSelected());
+        isDarkTheme = darkThemeCheck.isSelected();
+        UIManager.changeTheme(scene, isDarkTheme);
+        if (isDarkTheme) {
+            UIManager.setHoverEffectToButton(nextButton, "/icons_dark/next_dark.png", "/icons_dark/next_solid_dark.png", 15, 15);
+            prevButton.setText(null);
+            UIManager.setHoverEffectToButton(prevButton, "/icons_dark/prev_dark.png", "/icons_dark/prev_solid_dark.png", 15, 15);
+            shuffleButton.setText(null);
+            UIManager.setImageToButton(shuffleButton, "/icons_dark/shuffle_dark.png", 15, 15);
+            toggleRepeatButton.setText(null);
+            UIManager.setImageToButton(toggleRepeatButton, "/icons_dark/repeat_all_dark.png", 15, 15);
+            togglePlayPauseButton.setText(null);
+            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons_dark/play_dark.png", "/icons_dark/play_solid_dark.png", 15, 15);
+            stopButton.setText(null);
+            UIManager.setHoverEffectToButton(stopButton,"/icons_dark/stop_dark.png", "/icons_dark/stop_solid_dark.png", 15, 15);
+            deleteButton.setText(null);
+            UIManager.setImageToButton(deleteButton, "/icons_dark/delete_dark.png", 24, 24);
+            savePlaylistButton.setText(null);
+            UIManager.setImageToButton(savePlaylistButton, "/icons_dark/save_dark.png", 24, 24);
+            loadPlaylistButton.setText(null);
+            UIManager.setImageToButton(loadPlaylistButton, "/icons_dark/load_dark.png", 24, 24);
+            soundIcon.setImage(new Image(getClass().getResourceAsStream("/icons_dark/vol_min_dark.png")));
+        } else {
+            UIManager.setHoverEffectToButton(nextButton, "/icons/next.png", "/icons/next_solid.png", 15, 15);
+            prevButton.setText(null);
+            UIManager.setHoverEffectToButton(prevButton, "/icons/prev.png", "/icons/prev_solid.png", 15, 15);
+            shuffleButton.setText(null);
+            UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
+            toggleRepeatButton.setText(null);
+            UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_all.png", 15, 15);
+            togglePlayPauseButton.setText(null);
+            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+            stopButton.setText(null);
+            UIManager.setHoverEffectToButton(stopButton, "/icons/stop.png", "/icons/stop_solid.png", 15, 15);
+            deleteButton.setText(null);
+            UIManager.setImageToButton(deleteButton, "/icons/delete.png", 24, 24);
+            savePlaylistButton.setText(null);
+            UIManager.setImageToButton(savePlaylistButton, "/icons/save.png", 24, 24);
+            loadPlaylistButton.setText(null);
+            UIManager.setImageToButton(loadPlaylistButton, "/icons/load.png", 24, 24);
+            soundIcon.setImage(new Image(getClass().getResourceAsStream("/icons/vol_min.png")));
+        }
     }
 
     // METHODS
@@ -744,8 +787,6 @@ public class SonarController implements PlayerCallback {
 
 
 
-
-
     private void updateFileList(File folder) {
         File[] files = folder.listFiles();
         if (files != null) {
@@ -769,15 +810,27 @@ public class SonarController implements PlayerCallback {
         switch (repeatState) {
             case OFF:
                 statusLabel.setText("Repeat: Off");
-                UIManager.setImageToButton(toggleRepeatButton, "/icons/off.png", 15, 15);
+                if(isDarkTheme){
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons_dark/off_dark.png", 15, 15);
+                } else {
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons/off.png", 15, 15);
+                }
                 break;
             case REPEAT_ALL:
                 statusLabel.setText("Repeat: All");
-                UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_all.png", 15, 15);
+                if (isDarkTheme) {
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons_dark/repeat_all_dark.png", 15, 15);
+                } else {
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_all.png", 15, 15);
+                }
                 break;
             case REPEAT_ONE:
                 statusLabel.setText("Repeat: One");
-                UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_one.png", 15, 15);
+                if (isDarkTheme) {
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons_dark/repeat_one_dark.png", 15, 15);
+                } else {
+                    UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_one.png", 15, 15);
+                }
                 break;
         }
     }
@@ -787,14 +840,24 @@ public class SonarController implements PlayerCallback {
         switch (shuffleState) {
             case OFF:
                 statusLabel.setText("Shuffle: Off");
-                UIManager.setImageToButton(shuffleButton, "/icons/off.png", 15, 15);
+                if(isDarkTheme){
+                    UIManager.setImageToButton(shuffleButton, "/icons_dark/off_dark.png", 15, 15);
+                } else {
+                    UIManager.setImageToButton(shuffleButton, "/icons/off.png", 15, 15);
+                }
                 break;
             case SHUFFLE_ALL:
                 statusLabel.setText("Shuffled all tracks");
+                if (isDarkTheme) {
+                    UIManager.setImageToButton(shuffleButton, "/icons_dark/shuffle_dark.png", 15, 15);
+                }
                 UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
                 break;
             case SHUFFLE_NEXT:
                 statusLabel.setText("Shuffled next tracks");
+                if (isDarkTheme) {
+                    UIManager.setImageToButton(shuffleButton, "/icons_dark/shuffle_dark.png", 15, 15);
+                }
                 UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
                 break;
         }
@@ -803,13 +866,29 @@ public class SonarController implements PlayerCallback {
     private void updateVolumeIcon(double volume) {
         String imagePath;
         if (volume == 0) {
-            imagePath = "/icons/vol_mute.png";
+            if (isDarkTheme) {
+                imagePath = "/icons_dark/vol_mute_dark.png";
+            } else {
+                    imagePath = "/icons/vol_mute.png";
+            }
         } else if (volume < 30) {
-            imagePath = "/icons/vol_min.png";
+            if (isDarkTheme) {
+                imagePath = "/icons_dark/vol_min_dark.png";
+            } else {
+                imagePath = "/icons/vol_min.png";
+            }
         } else if (volume < 70) {
-            imagePath = "/icons/vol_low.png";
+            if (isDarkTheme) {
+                imagePath = "/icons_dark/vol_low_dark.png";
+            } else {
+                imagePath = "/icons/vol_low.png";
+            }
         } else {
-            imagePath = "/icons/vol_max.png";
+            if (isDarkTheme) {
+                imagePath = "/icons_dark/vol_max_dark.png";
+            } else {
+                imagePath = "/icons/vol_max.png";
+            }
         }
         Image image = new Image(getClass().getResourceAsStream(imagePath));
         soundIcon.setImage(image);
@@ -872,7 +951,11 @@ public class SonarController implements PlayerCallback {
             }
         });
 
-        UIManager.setImageToButton(togglePlayPauseButton, "/icons/pause.png", 15, 15);
+        if (isDarkTheme) {
+            UIManager.setImageToButton(togglePlayPauseButton, "/icons_dark/pause_dark.png", 15, 15);
+        } else {
+            UIManager.setImageToButton(togglePlayPauseButton, "/icons/pause.png", 15, 15);
+        }
         statusLabel.setText("Playing");
     }
 
@@ -880,9 +963,17 @@ public class SonarController implements PlayerCallback {
     private void updatePlayPauseButton(boolean isPlaying) {
         togglePlayPauseButton.setText(null);
         if (isPlaying) {
-            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/pause.png", "/icons/pause_solid.png", 15, 15);
+            if (isDarkTheme) {
+                UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons_dark/pause_dark.png", "/icons_dark/pause_solid_dark.png", 15, 15);
+            } else {
+                UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/pause.png", "/icons/pause_solid.png", 15, 15);
+            }
         } else {
-            UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+            if (isDarkTheme) {
+                UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons_dark/play_dark.png", "/icons_dark/play_solid_dark.png", 15, 15);
+            }else {
+                UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+            }
         }
     }
 
