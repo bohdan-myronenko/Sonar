@@ -7,6 +7,7 @@ import com.mpatric.mp3agic.UnsupportedTagException;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -309,8 +310,10 @@ public class SonarController implements PlayerCallback {
         });
 
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
-            if (!seekSlider.isValueChanging()) {
-                seekSlider.setValue(newTime.toSeconds());
+            double currentTime = newTime.toSeconds();
+            seekSlider.setValue(currentTime);
+            if (miniController != null) {
+                Platform.runLater(() -> miniController.updateSeekSlider(currentTime));
             }
         });
 
@@ -356,6 +359,11 @@ public class SonarController implements PlayerCallback {
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> updateCurrentTime()));
         timeline.setCycleCount(Animation.INDEFINITE);
 
+        timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            updateSliders();
+        }));
+        timeline.setCycleCount(Animation.INDEFINITE);
+        timeline.play();
         fileListView.setCellFactory(lv -> {
             ListCell<Track> cell = new ListCell<Track>() {
                 @Override
@@ -624,9 +632,13 @@ public class SonarController implements PlayerCallback {
     private void handleShrink() throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/folltrace/sonar/player_minimised.fxml"));
         Parent newRoot = fxmlLoader.load();
+
         MiniController miniController = fxmlLoader.getController();
         miniController.setSonarController(this);
-
+        if (mediaPlayer != null && mediaPlayer.getMedia() != null) {
+            double totalDuration = mediaPlayer.getMedia().getDuration().toSeconds();
+            miniController.setSliderMax(totalDuration);
+        }
         Stage shrinkStage = new Stage();
         Scene newScene = new Scene(newRoot);
 
@@ -856,13 +868,13 @@ public class SonarController implements PlayerCallback {
     @Override
     public void onMediaReady(MediaPlayer mediaPlayer) {
         this.mediaPlayer = mediaPlayer;
-
-        // Update UI components
         updateUIForMediaPlayer(mediaPlayer);
-
         updateSongInfo(mediaPlayer.getMedia());
-    }
 
+        if (miniController != null) {
+            miniController.updateSeekSliderMax(mediaPlayer.getMedia().getDuration().toSeconds());
+        }
+    }
     private void updateUIForMediaPlayer(MediaPlayer mediaPlayer) {
         seekSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
 
@@ -875,6 +887,19 @@ public class SonarController implements PlayerCallback {
         UIManager.setImageToButton(togglePlayPauseButton, "/icons/pause.png", 15, 15);
         statusLabel.setText("Playing");
     }
+    private void updateSliders() {
+        if (mediaPlayer != null) {
+            double currentTime = mediaPlayer.getCurrentTime().toSeconds();
+            Platform.runLater(() -> {
+                seekSlider.setValue(currentTime);
+                if (miniController != null) {
+                    miniController.updateSeekSlider(currentTime);
+                }
+            });
+        }
+    }
+
+
 
 
     private void updatePlayPauseButton(boolean isPlaying) {
@@ -883,6 +908,12 @@ public class SonarController implements PlayerCallback {
             UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/pause.png", "/icons/pause_solid.png", 15, 15);
         } else {
             UIManager.setHoverEffectToButton(togglePlayPauseButton, "/icons/play.png", "/icons/play_solid.png", 15, 15);
+        }
+    }
+
+    public void updateMediaPlayerTime(double time) {
+        if (mediaPlayer != null) {
+            mediaPlayer.seek(Duration.seconds(time));
         }
     }
 
@@ -968,6 +999,10 @@ public class SonarController implements PlayerCallback {
             // Clear the button text and set the appropriate icon
             togglePlayPauseButton.setText(null);
             updatePlayPauseButton(true);
+
+        }
+        if (miniController != null) {
+            miniController.updateSeekSliderMax(mediaPlayer.getMedia().getDuration().toSeconds());
         }
     }
 
