@@ -22,10 +22,6 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.stage.*;
 import javafx.util.Duration;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.mp3.Mp3Parser;
-import org.xml.sax.helpers.DefaultHandler;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -660,20 +656,13 @@ public class SonarController implements PlayerCallback {
     }
 
     public String getTrackDuration(File file) {
-        try (var input = new FileInputStream(file)) {
-            var handler = new DefaultHandler();
-            var metadata = new Metadata();
-            new Mp3Parser().parse(input, handler, metadata, new ParseContext());
-
-            String durationStr = metadata.get("xmpDM:duration");
-            if (durationStr != null) {
-                double secs = Double.parseDouble(durationStr);
-                return formatTrackLength((long) (secs * 1000));
-            }
+        try {
+            var mp3 = new Mp3File(file.getAbsolutePath());
+            long seconds = mp3.getLengthInSeconds();
+            return formatTrackLength(seconds * 1000);
         } catch (Exception e) {
-            e.printStackTrace();
+            return "Unknown";
         }
-        return "Unknown";
     }
 
     public BufferedImage getAlbumCover(File file) {
