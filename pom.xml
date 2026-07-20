@@ -6,58 +6,101 @@
 
     <groupId>folltrace</groupId>
     <artifactId>Sonar</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <name>Sonar</name>
-
-
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.10.0</junit.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <javafx.version>27-ea+25</javafx.version>
+        <tika.version>2.9.2</tika.version>
+        <mp3agic.version>0.9.1</mp3agic.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>20</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>20</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-media</artifactId>
-            <version>20</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-core</artifactId>
-            <version>2.0.0-ALPHA</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-parser-audiovideo-module</artifactId>
-            <version>3.0.0-BETA</version>
-        </dependency>
-        <dependency>
-            <groupId>com.mpatric</groupId>
-            <artifactId>mp3agic</artifactId>
-            <version>0.9.0</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
-            <version>20</version>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
-            <version>20</version>
+            <version>${javafx.version}</version>
+        </dependency>
+        <!-- Platform native libraries -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>linux</classifier>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parser-audiovideo-module</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mpatric</groupId>
+            <artifactId>mp3agic</artifactId>
+            <version>${mp3agic.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -65,52 +108,228 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <source>20</source>
-                    <target>20</target>
+                    <release>21</release>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <executions>
                     <execution>
-                        <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>folltrace.sonar/folltrace.sonar.SonarMain</mainClass>
-                            <launcher>app</launcher>
-                            <jlinkZipName>app</jlinkZipName>
-                            <jlinkImageName>app</jlinkImageName>
-                            <noManPages>true</noManPages>
-                            <stripDebug>true</stripDebug>
-                            <noHeaderFiles>true</noHeaderFiles>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>folltrace.sonar.SonarMain</mainClass>
-                                </transformer>
-                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Build a distributable Linux package.
+            Run:  ./mvnw clean package -P linux-package
+            Output: target/sonar-1.0-linux.tar.gz
+
+            The package is a directory tree meant to be installed to /opt/sonar/.
+            It bundles the app JAR, all dependencies, and a launch script.
+            A system JDK (21+) with JavaFX modules on the module path is still
+            required at runtime. For a fully self-contained package (bundled
+            JDK), use jlink with only well-modularized dependencies.
+        -->
+        <profile>
+            <id>linux-package</id>
+            <build>
+                <plugins>
+
+                    <!-- Copy all runtime deps into target/lib -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.8.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-deps</id>
+                                <phase>package</phase>
+                                <goals><goal>copy-dependencies</goal></goals>
+                                <configuration>
+                                    <includeScope>runtime</includeScope>
+                                    <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Assemble distributable directory + tarball -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>assemble-package</id>
+                                <phase>package</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target>
+                                        <property name="pkg" value="${project.build.directory}/package/sonar-${project.version}"/>
+                                        <mkdir dir="${pkg}/bin"/>
+                                        <mkdir dir="${pkg}/lib"/>
+                                        <mkdir dir="${pkg}/share/applications"/>
+                                        <mkdir dir="${pkg}/share/icons/hicolor/256x256/apps"/>
+                                        <mkdir dir="${pkg}/share/doc/sonar"/>
+
+                                        <!-- Copy the app JAR -->
+                                        <copy todir="${pkg}/lib">
+                                            <fileset dir="${project.build.directory}">
+                                                <include name="${project.build.finalName}.jar"/>
+                                            </fileset>
+                                        </copy>
+
+                                        <!-- Copy all dependency JARs -->
+                                        <copy todir="${pkg}/lib">
+                                            <fileset dir="${project.build.directory}/lib"/>
+                                        </copy>
+
+                                        <!-- Generate the module path from all JARs -->
+                                        <pathconvert property="modulepath" pathsep=":">
+                                            <fileset dir="${pkg}/lib" includes="*.jar"/>
+                                            <map from="${pkg}" to="/opt/sonar"/>
+                                        </pathconvert>
+
+                                        <!-- Launcher script -->
+                                        <echo file="${pkg}/bin/sonar"><![CDATA[#!/bin/sh
+APP_DIR="/opt/sonar"
+MODULE_PATH=""
+for jar in "${APP_DIR}/lib"/*.jar; do
+    if [ -z "${MODULE_PATH}" ]; then
+        MODULE_PATH="${jar}"
+    else
+        MODULE_PATH="${MODULE_PATH}:${jar}"
+    fi
+done
+exec java --module-path "${MODULE_PATH}" -m folltrace.sonar/folltrace.sonar.SonarMain "$@"
+]]></echo>
+                                        <chmod file="${pkg}/bin/sonar" perm="755"/>
+
+                                        <!-- .desktop file -->
+                                        <echo file="${pkg}/share/applications/sonar.desktop"><![CDATA[[Desktop Entry]
+Name=Sonar
+Comment=A modern music player
+Exec=/opt/sonar/bin/sonar
+Icon=sonar
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Player;
+Keywords=music;player;audio;
+]]></echo>
+
+                                        <!-- Icon -->
+                                        <copy file="${project.basedir}/src/main/resources/logo.png"
+                                              tofile="${pkg}/share/icons/hicolor/256x256/apps/sonar.png"/>
+
+                                        <!-- Install script -->
+                                        <echo file="${pkg}/install.sh"><![CDATA[#!/bin/sh
+set -e
+DEST="/opt/sonar"
+SRC="$(dirname "$(readlink -f "$0")")"
+
+echo "Installing Sonar ${project.version} to ${DEST}..."
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root (sudo)."
+    exit 1
+fi
+
+[ -d "${DEST}" ] && rm -rf "${DEST}"
+
+cp -r "${SRC}/lib"   "${DEST}/"
+cp -r "${SRC}/bin"   "${DEST}/"
+cp -r "${SRC}/share" "${DEST}/"
+
+install -m 644 "${DEST}/share/applications/sonar.desktop" /usr/share/applications/
+install -m 644 "${DEST}/share/icons/hicolor/256x256/apps/sonar.png" /usr/share/icons/hicolor/256x256/apps/
+ln -sf "${DEST}/bin/sonar" /usr/local/bin/sonar
+
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache /usr/share/icons/hicolor/ || true
+command -v update-desktop-database >/dev/null && update-desktop-database /usr/share/applications/ || true
+
+echo ""
+echo "Sonar ${project.version} installed successfully!"
+echo "  Run from terminal:  sonar"
+echo "  Or find it in your application menu."
+echo ""
+echo "  Requires: java >= 21"
+]]></echo>
+                                        <chmod file="${pkg}/install.sh" perm="755"/>
+
+                                        <!-- Uninstall script -->
+                                        <echo file="${pkg}/uninstall.sh"><![CDATA[#!/bin/sh
+set -e
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root (sudo)."
+    exit 1
+fi
+echo "Uninstalling Sonar..."
+rm -f /usr/local/bin/sonar
+rm -f /usr/share/applications/sonar.desktop
+rm -f /usr/share/icons/hicolor/256x256/apps/sonar.png
+rm -rf /opt/sonar
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache /usr/share/icons/hicolor/ || true
+command -v update-desktop-database >/dev/null && update-desktop-database /usr/share/applications/ || true
+echo "Sonar uninstalled."
+]]></echo>
+                                        <chmod file="${pkg}/uninstall.sh" perm="755"/>
+
+                                        <!-- README -->
+                                        <echo file="${pkg}/share/doc/sonar/README"><![CDATA[Sonar ${project.version}
+=====================
+
+A modern music player built with JavaFX.
+
+Requirements: Java 21 or later.
+
+Installation
+------------
+  sudo ./install.sh
+
+Running
+-------
+  sonar
+
+Uninstallation
+--------------
+  sudo ./uninstall.sh
+]]></echo>
+
+                                        <!-- Create tarball -->
+                                        <tar destfile="${project.build.directory}/sonar-${project.version}-linux.tar.gz"
+                                             compression="gzip">
+                                            <tarfileset dir="${pkg}" prefix="sonar-${project.version}">
+                                                <include name="**"/>
+                                                <exclude name="install.sh"/>
+                                                <exclude name="uninstall.sh"/>
+                                                <exclude name="bin/sonar"/>
+                                            </tarfileset>
+                                            <tarfileset dir="${pkg}" prefix="sonar-${project.version}"
+                                                        filemode="755">
+                                                <include name="install.sh"/>
+                                                <include name="uninstall.sh"/>
+                                                <include name="bin/sonar"/>
+                                            </tarfileset>
+                                        </tar>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -8,25 +8,23 @@ import java.io.File;
 
 public class Player {
     private MediaPlayer mediaPlayer;
-    private PlayerCallback callback;
+    private final PlayerCallback callback;
 
-    public Player(PlayerCallback callback){
+    public Player(PlayerCallback callback) {
         this.callback = callback;
     }
-    public void playMedia(String filePath) {
-        double currentVolume = 1.0; // Default volume level
 
-        // Check if a MediaPlayer already exists and store its volume level
+    public void playMedia(String filePath) {
+        double currentVolume = 1.0;
+
         if (mediaPlayer != null) {
             currentVolume = mediaPlayer.getVolume();
             mediaPlayer.stop();
             mediaPlayer.dispose();
         }
 
-        Media media = new Media(new File(filePath).toURI().toString());
-        this.mediaPlayer = new MediaPlayer(media);
-
-        // Set the volume of the new MediaPlayer to the stored volume level
+        var media = new Media(new File(filePath).toURI().toString());
+        mediaPlayer = new MediaPlayer(media);
         mediaPlayer.setVolume(currentVolume);
 
         mediaPlayer.setOnEndOfMedia(() -> {
@@ -38,9 +36,7 @@ public class Player {
             }
         });
 
-        mediaPlayer.setOnReady(() -> {
-            callback.onMediaReady(mediaPlayer);
-        });
+        mediaPlayer.setOnReady(() -> callback.onMediaReady(mediaPlayer));
 
         mediaPlayer.play();
     }
@@ -53,10 +49,7 @@ public class Player {
         }
     }
 
-
-
-
-    public MediaPlayer getMediaPlayer(){
-        return this.mediaPlayer;
+    public MediaPlayer getMediaPlayer() {
+        return mediaPlayer;
     }
 }

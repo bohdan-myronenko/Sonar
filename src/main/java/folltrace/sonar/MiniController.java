@@ -6,72 +6,54 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
 
 public class MiniController {
+
     private SonarController sonarController;
-    @FXML
-    private Label songLabel;
-    @FXML
-    private Label artistLabel;
-    @FXML
-    private Label albumLabel;
-    @FXML
-    private Label volumeLabel;
+
+    @FXML private Label songLabel;
+    @FXML private Label artistLabel;
+    @FXML private Label albumLabel;
+    @FXML private Label volumeLabel;
+
+    @FXML private Button hide_btn;
+    @FXML private Button unshrink_btn;
+    @FXML private Button play_pause_btn;
+    @FXML private Button next_btn;
+    @FXML private Button prev_btn;
+    @FXML private Button stop_btn;
+    @FXML private Button repeat_btn;
+    @FXML private Button shuffle_btn;
+
+    @FXML private Slider miniVolumeSlider;
+    @FXML private Slider miniSeekSlider;
+    @FXML private AnchorPane mini_drag_pane;
+
+    private double dragOffsetX;
+    private double dragOffsetY;
 
     @FXML
-    private Button hide_btn;
-    @FXML
-    private Button unshrink_btn;
-    @FXML
-    private Button play_pause_btn;
-    @FXML
-    private Button next_btn;
-    @FXML
-    private Button prev_btn;
-    @FXML
-    private Button stop_btn;
-    @FXML
-    private Button repeat_btn;
-    @FXML
-    private Button shuffle_btn;
-
-    @FXML
-    private Slider miniVolumeSlider;
-    @FXML
-    private Slider miniSeekSlider;
-
-    @FXML
-    private AnchorPane mini_drag_pane;
-
-
-    private double xOffset = 0;
-    private double yOffset = 0;
-
-    @FXML
-    private void initialize(){
-        miniVolumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            MediaPlayer mediaPlayer = sonarController.getMediaPlayer();
-            if (mediaPlayer != null) {
-                ((MediaPlayer) mediaPlayer).setVolume(newValue.doubleValue());
+    private void initialize() {
+        miniVolumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            var mp = sonarController.getMediaPlayer();
+            if (mp != null) {
+                mp.setVolume(newVal.doubleValue());
             }
-            int volumePercent = (int) Math.round(newValue.doubleValue() * 100);
-            volumeLabel.setText(volumePercent + "%"); // Update if you have a label
-
-            // Update sound icon based on volume level
-            // updateVolumeIcon(newValue.doubleValue() * 100); // Implement this if needed
+            int percent = (int) Math.round(newVal.doubleValue() * 100);
+            volumeLabel.setText(percent + "%");
         });
 
         mini_drag_pane.setOnMousePressed(event -> {
-            xOffset = event.getSceneX();
-            yOffset = event.getSceneY();
+            dragOffsetX = event.getSceneX();
+            dragOffsetY = event.getSceneY();
         });
         mini_drag_pane.setOnMouseDragged(event -> {
-            Stage stage = (Stage) mini_drag_pane.getScene().getWindow();
-            stage.setX(event.getScreenX() - xOffset);
-            stage.setY(event.getScreenY() - yOffset);
+            var stage = (Stage) mini_drag_pane.getScene().getWindow();
+            stage.setX(event.getScreenX() - dragOffsetX);
+            stage.setY(event.getScreenY() - dragOffsetY);
         });
+
         miniSeekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
             if (!isChanging) {
                 sonarController.updateMediaPlayerTime(miniSeekSlider.getValue());
@@ -79,23 +61,29 @@ public class MiniController {
         });
     }
 
+    public void setSonarController(SonarController sc) {
+        this.sonarController = sc;
+    }
+
+    public void setSliderMax(double max) {
+        miniSeekSlider.setMax(max);
+    }
+
     public void updateVolumeSlider(double volume) {
         if (miniVolumeSlider != null) {
-            miniVolumeSlider.setValue(volume);
+            miniVolumeSlider.setValue(volume / 100.0);
         }
     }
 
-    public void updateSeekSliderMax(double maxDuration) {
+    public void updateSeekSliderMax(double max) {
         if (miniSeekSlider != null) {
-            miniSeekSlider.setMax(maxDuration);
+            miniSeekSlider.setMax(max);
         }
     }
 
-    public void updateSeekSliderValue(double currentTime) {
+    public void updateSeekSliderValue(double time) {
         if (miniSeekSlider != null) {
-            Platform.runLater(() -> {
-                miniSeekSlider.setValue(currentTime);
-            });
+            Platform.runLater(() -> miniSeekSlider.setValue(time));
         }
     }
 
@@ -103,18 +91,9 @@ public class MiniController {
         miniSeekSlider.setValue(value);
     }
 
-
-
-    public void setSliderMax(double max) {
-        miniSeekSlider.setMax(max);
-    }
-    public void setSonarController(SonarController sonarController) {
-        this.sonarController = sonarController;
-    }
-    public MiniController(){}
     @FXML
     private void handleHideApp() {
-        Stage stage = (Stage) songLabel.getScene().getWindow(); // Use any FXML-injected component
+        var stage = (Stage) songLabel.getScene().getWindow();
         if (stage != null) {
             stage.setIconified(!stage.isIconified());
         }
@@ -122,7 +101,7 @@ public class MiniController {
 
     @FXML
     private void handleClose() {
-        Stage stage = (Stage) songLabel.getScene().getWindow(); // Use any FXML-injected component
+        var stage = (Stage) songLabel.getScene().getWindow();
         if (stage != null) {
             stage.close();
         }
@@ -133,39 +112,16 @@ public class MiniController {
         if (sonarController != null) {
             sonarController.showMainWindow();
         }
-
-        Stage miniStage = (Stage) songLabel.getScene().getWindow(); // Assuming songLabel is part of MiniController's FXML
-        if (miniStage != null) {
-            miniStage.close();
+        var stage = (Stage) songLabel.getScene().getWindow();
+        if (stage != null) {
+            stage.close();
         }
     }
 
-    @FXML
-    private void switchPlayPause(){
-        sonarController.handleTogglePlayPause();
-    }
-
-    @FXML
-    private void playNextTrack() {
-        sonarController.onNextTrack();
-    }
-
-    @FXML
-    private void playPreviousTrack() {
-        sonarController.onPreviousTrack();
-    }
-
-    @FXML
-    private void shuffleToggle(){
-        sonarController.toggleShuffle();
-    }
-
-    @FXML
-    private void repeatToggle(){
-        sonarController.handleRepeatToggle();
-    }
-    @FXML
-    private void stopPlayback(){
-        sonarController.handleStop();
-    }
+    @FXML private void switchPlayPause()    { sonarController.handleTogglePlayPause(); }
+    @FXML private void playNextTrack()      { sonarController.onNextTrack(); }
+    @FXML private void playPreviousTrack()  { sonarController.onPreviousTrack(); }
+    @FXML private void shuffleToggle()      { sonarController.toggleShuffle(); }
+    @FXML private void repeatToggle()       { sonarController.handleRepeatToggle(); }
+    @FXML private void stopPlayback()       { sonarController.handleStop(); }
 }

@@ -5,70 +5,70 @@ import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
-public class UIManager {
+import java.util.Objects;
 
-    private static boolean isHovering = false;
+public final class UIManager {
+
+    private UIManager() {}
 
     /**
      * Loads an image and sets it to a button.
      *
-     * @param button The button to set the image on.
+     * @param button    The button to set the image on.
      * @param imagePath The path to the image resource.
-     * @param width The width of the image.
-     * @param height The height of the image.
+     * @param width     The width of the image.
+     * @param height    The height of the image.
      */
     public static void setImageToButton(Button button, String imagePath, int width, int height) {
-        Image image = new Image(UIManager.class.getResourceAsStream(imagePath));
-        ImageView imageView = new ImageView(image);
+        var image = new Image(Objects.requireNonNull(UIManager.class.getResourceAsStream(imagePath)));
+        var imageView = new ImageView(image);
         imageView.setFitWidth(width);
         imageView.setFitHeight(height);
         button.setGraphic(imageView);
     }
 
-    public static void setHoverEffectToButton(Button button, String normalImagePath, String hoverImagePath, int width, int height) {
-        // Set initial image based on hover state
-        String initialImagePath = isHovering ? hoverImagePath : normalImagePath;
-        setImageToButton(button, initialImagePath, width, height);
+    /**
+     * Sets a hover effect on a button, swapping between two images.
+     *
+     * @param button          The button to add the effect to.
+     * @param normalImagePath Image shown when not hovering.
+     * @param hoverImagePath  Image shown when hovering.
+     * @param width           Image width.
+     * @param height          Image height.
+     */
+    public static void setHoverEffectToButton(Button button, String normalImagePath, String hoverImagePath,
+                                               int width, int height) {
+        setImageToButton(button, normalImagePath, width, height);
 
-        // Change image on hover
-        button.setOnMouseEntered(e -> {
-            isHovering = true;
-            setImageToButton(button, hoverImagePath, width, height);
-        });
-        button.setOnMouseExited(e -> {
-            isHovering = false;
-            setImageToButton(button, normalImagePath, width, height);
-        });
+        button.setOnMouseEntered(e -> setImageToButton(button, hoverImagePath, width, height));
+        button.setOnMouseExited(e -> setImageToButton(button, normalImagePath, width, height));
     }
-
 
     /**
      * Creates a button with an image.
      *
      * @param imagePath The path to the image resource.
-     * @param width The width of the image.
-     * @param height The height of the image.
+     * @param width     The width of the image.
+     * @param height    The height of the image.
      * @return A new button with the specified image.
      */
     public static Button createImageButton(String imagePath, int width, int height) {
-        Button button = new Button();
+        var button = new Button();
         setImageToButton(button, imagePath, width, height);
         return button;
     }
 
-
     /**
      * Changes the JavaFX style for a scene using a CSS file.
      *
-     * @param scene
-     * @param isChecked
+     * @param scene     The scene to apply the theme to.
+     * @param darkTheme Whether to apply the dark theme.
      */
-    public static void changeTheme(Scene scene, boolean isChecked){
-        if (isChecked){
-            scene.getStylesheets().clear();
-            scene.getStylesheets().add(UIManager.class.getResource("/dark.css").toExternalForm());
-        } else {
-            scene.getStylesheets().clear();
+    public static void changeTheme(Scene scene, boolean darkTheme) {
+        scene.getStylesheets().clear();
+        if (darkTheme) {
+            scene.getStylesheets().add(Objects.requireNonNull(
+                    UIManager.class.getResource("/dark.css")).toExternalForm());
         }
     }
 }
