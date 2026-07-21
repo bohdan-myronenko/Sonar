@@ -17,79 +17,19 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-media</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-swing</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-base</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-graphics</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <!-- Platform native libraries for Linux -->
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-base</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-graphics</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-media</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-swing</artifactId>
-            <version>${javafx.version}</version>
-            <classifier>linux</classifier>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mpatric</groupId>
-            <artifactId>mp3agic</artifactId>
-            <version>${mp3agic.version}</version>
-        </dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-media</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-swing</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId><version>${javafx.version}</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-media</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-swing</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
+        <dependency><groupId>com.mpatric</groupId><artifactId>mp3agic</artifactId><version>${mp3agic.version}</version></dependency>
     </dependencies>
 
     <build>
@@ -98,233 +38,18 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
-                <configuration>
-                    <release>21</release>
-                </configuration>
+                <configuration><release>21</release></configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <executions>
-                    <execution>
-                        <id>default-cli</id>
-                        <configuration>
-                            <mainClass>folltrace.sonar/folltrace.sonar.SonarMain</mainClass>
-                        </configuration>
+                    <execution><id>default-cli</id>
+                        <configuration><mainClass>folltrace.sonar/folltrace.sonar.SonarMain</mainClass></configuration>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>linux-package</id>
-            <build>
-                <plugins>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <version>3.8.1</version>
-                        <executions>
-                            <execution>
-                                <id>copy-deps</id>
-                                <phase>package</phase>
-                                <goals><goal>copy-dependencies</goal></goals>
-                                <configuration>
-                                    <includeScope>runtime</includeScope>
-                                    <outputDirectory>${project.build.directory}/mods-copy</outputDirectory>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <execution>
-                                <id>jlink-and-package</id>
-                                <phase>package</phase>
-                                <goals><goal>run</goal></goals>
-                                <configuration>
-                                    <target>
-                                        <property name="mods.src" value="${project.build.directory}/mods-copy"/>
-                                        <property name="genmods" value="${project.build.directory}/gen-mods"/>
-                                        <property name="jlink.out" value="${project.build.directory}/sonar-jlink"/>
-                                        <property name="pkg" value="${project.build.directory}/package/sonar-${project.version}"/>
-
-                                        <!-- Generate proper module for mp3agic -->
-                                        <mkdir dir="${genmods}"/>
-                                        <exec executable="jdeps" failonerror="true">
-                                            <arg value="--generate-module-info"/>
-                                            <arg value="${genmods}"/>
-                                            <arg value="${mods.src}/mp3agic-${mp3agic.version}.jar"/>
-                                        </exec>
-                                        <mkdir dir="${genmods}/mp3agic-classes"/>
-                                        <exec executable="javac" failonerror="true">
-                                            <arg value="--patch-module"/>
-                                            <arg value="mp3agic=${mods.src}/mp3agic-${mp3agic.version}.jar"/>
-                                            <arg value="-d"/>
-                                            <arg value="${genmods}/mp3agic-classes"/>
-                                            <arg value="${genmods}/mp3agic/module-info.java"/>
-                                        </exec>
-                                        <copy file="${mods.src}/mp3agic-${mp3agic.version}.jar"
-                                              tofile="${genmods}/mp3agic-${mp3agic.version}.jar"/>
-                                        <exec executable="jar" failonerror="true">
-                                            <arg value="--update"/>
-                                            <arg value="--file=${genmods}/mp3agic-${mp3agic.version}.jar"/>
-                                            <arg value="-C"/>
-                                            <arg value="${genmods}/mp3agic-classes"/>
-                                            <arg value="module-info.class"/>
-                                        </exec>
-
-                                        <!-- jlink -->
-                                        <property name="mod.path"
-                                                  value="${genmods}/mp3agic-${mp3agic.version}.jar${path.separator}${mods.src}/javafx-base-${javafx.version}.jar${path.separator}${mods.src}/javafx-base-${javafx.version}-linux.jar${path.separator}${mods.src}/javafx-controls-${javafx.version}.jar${path.separator}${mods.src}/javafx-controls-${javafx.version}-linux.jar${path.separator}${mods.src}/javafx-fxml-${javafx.version}.jar${path.separator}${mods.src}/javafx-fxml-${javafx.version}-linux.jar${path.separator}${mods.src}/javafx-graphics-${javafx.version}.jar${path.separator}${mods.src}/javafx-graphics-${javafx.version}-linux.jar${path.separator}${mods.src}/javafx-media-${javafx.version}.jar${path.separator}${mods.src}/javafx-media-${javafx.version}-linux.jar${path.separator}${mods.src}/javafx-swing-${javafx.version}.jar${path.separator}${mods.src}/javafx-swing-${javafx.version}-linux.jar${path.separator}${project.build.directory}/classes"/>
-
-                                        <exec executable="jlink" failonerror="true">
-                                            <arg value="--output"/>
-                                            <arg value="${jlink.out}"/>
-                                            <arg value="--module-path"/>
-                                            <arg value="${mod.path}"/>
-                                            <arg value="--add-modules"/>
-                                            <arg value="java.base,java.desktop,java.logging,java.scripting,java.xml,java.datatransfer,jdk.unsupported,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.swing,mp3agic,folltrace.sonar"/>
-                                            <arg value="--launcher"/>
-                                            <arg value="sonar=folltrace.sonar/folltrace.sonar.SonarMain"/>
-                                            <arg value="--strip-debug"/>
-                                            <arg value="--no-header-files"/>
-                                            <arg value="--no-man-pages"/>
-                                            <arg value="--compress=2"/>
-                                        </exec>
-
-                                        <!-- Assemble package -->
-                                        <mkdir dir="${pkg}"/>
-                                        <mkdir dir="${pkg}/share/applications"/>
-                                        <mkdir dir="${pkg}/share/icons/hicolor/256x256/apps"/>
-                                        <mkdir dir="${pkg}/share/doc/sonar"/>
-
-                                        <!-- Copy the jlink image into the package root as 'runtime' -->
-                                        <copy todir="${pkg}/runtime">
-                                            <fileset dir="${jlink.out}"/>
-                                        </copy>
-                                        <chmod dir="${pkg}/runtime/bin" perm="755" includes="*"/>
-
-                                        <!-- Launcher script: finds the runtime relative to itself -->
-                                        <echo file="${pkg}/sonar"><![CDATA[#!/bin/sh
-# Locate the runtime directory relative to this script
-APP_HOME="$(cd "$(dirname "$0")" && pwd)"
-RUNTIME="${APP_HOME}/runtime"
-if [ ! -x "${RUNTIME}/bin/sonar" ]; then
-    # Also check the old layout (installed to /opt/sonar)
-    RUNTIME="/opt/sonar/runtime"
-fi
-exec "${RUNTIME}/bin/sonar" "$@"
-]]></echo>
-                                        <chmod file="${pkg}/sonar" perm="755"/>
-
-                                        <!-- .desktop file -->
-                                        <echo file="${pkg}/share/applications/sonar.desktop"><![CDATA[[Desktop Entry]
-Name=Sonar
-Comment=A modern music player
-Exec=/opt/sonar/sonar
-Icon=sonar
-Terminal=false
-Type=Application
-Categories=AudioVideo;Audio;Player;
-Keywords=music;player;audio;
-]]></echo>
-
-                                        <copy file="${project.basedir}/src/main/resources/logo.png"
-                                              tofile="${pkg}/share/icons/hicolor/256x256/apps/sonar.png"/>
-
-                                        <echo file="${pkg}/install.sh"><![CDATA[#!/bin/sh
-set -e
-DEST="/opt/sonar"
-SRC="$(cd "$(dirname "$0")" && pwd)"
-
-printf "Installing Sonar ${project.version} to %s...\n" "${DEST}"
-
-if [ "$(id -u)" -ne 0 ]; then
-    printf "This script must be run as root (sudo).\n"
-    exit 1
-fi
-
-[ -d "${DEST}" ] && rm -rf "${DEST}"
-mkdir -p "${DEST}"
-
-cp -r "${SRC}/runtime" "${DEST}/"
-cp    "${SRC}/sonar"    "${DEST}/"
-chmod +x "${DEST}/sonar"
-chmod +x "${DEST}/runtime/bin/"*
-cp -r "${SRC}/share"    "${DEST}/"
-
-install -m 644 "${DEST}/share/applications/sonar.desktop" /usr/share/applications/
-install -m 644 "${DEST}/share/icons/hicolor/256x256/apps/sonar.png" /usr/share/icons/hicolor/256x256/apps/
-ln -sf "${DEST}/sonar" /usr/local/bin/sonar
-
-command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache /usr/share/icons/hicolor/ || true
-command -v update-desktop-database >/dev/null && update-desktop-database /usr/share/applications/ || true
-
-printf "\nSonar ${project.version} installed successfully!\n\n"
-printf "  Run from terminal:  sonar\n"
-printf "  Or find it in your application menu.\n"
-printf "  No Java installation required.\n"
-]]></echo>
-                                        <chmod file="${pkg}/install.sh" perm="755"/>
-
-                                        <echo file="${pkg}/uninstall.sh"><![CDATA[#!/bin/sh
-set -e
-if [ "$(id -u)" -ne 0 ]; then
-    printf "This script must be run as root (sudo).\n"
-    exit 1
-fi
-printf "Uninstalling Sonar...\n"
-rm -f /usr/local/bin/sonar
-rm -f /usr/share/applications/sonar.desktop
-rm -f /usr/share/icons/hicolor/256x256/apps/sonar.png
-rm -rf /opt/sonar
-command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache /usr/share/icons/hicolor/ || true
-command -v update-desktop-database >/dev/null && update-desktop-database /usr/share/applications/ || true
-printf "Sonar uninstalled.\n"
-]]></echo>
-                                        <chmod file="${pkg}/uninstall.sh" perm="755"/>
-
-                                        <echo file="${pkg}/share/doc/sonar/README"><![CDATA[Sonar ${project.version} — Self-contained music player
-No Java required.
-
-Install:   sudo ./install.sh
-Run:       sonar
-Uninstall: sudo ./uninstall.sh
-]]></echo>
-
-                                        <tar destfile="${project.build.directory}/sonar-${project.version}-linux.tar.gz"
-                                             compression="gzip">
-                                            <tarfileset dir="${pkg}" prefix="sonar-${project.version}">
-                                                <include name="**"/>
-                                                <exclude name="install.sh"/>
-                                                <exclude name="uninstall.sh"/>
-                                                <exclude name="sonar"/>
-                                                <exclude name="runtime/bin/*"/>
-                                            </tarfileset>
-                                            <tarfileset dir="${pkg}" prefix="sonar-${project.version}" filemode="755">
-                                                <include name="install.sh"/>
-                                                <include name="uninstall.sh"/>
-                                                <include name="sonar"/>
-                                                <include name="runtime/bin/*"/>
-                                            </tarfileset>
-                                        </tar>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
