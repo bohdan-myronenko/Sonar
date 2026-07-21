@@ -27,6 +27,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public class SonarController implements PlayerCallback, MprisPlayer {
@@ -103,6 +105,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private Player player;
     private MiniController miniController;
     private String currentlyPlayingTrackPath;
+    private String currentAlbumArtPath;   // temp file holding album art for MPRIS
     private MprisService mpris;
     private volatile boolean isPlaying;  // tracked so MPRIS reads correct state immediately
     private long lastMprisPositionSync;   // throttle position updates to D-Bus
@@ -115,6 +118,10 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     @Override
     public RepeatState getRepeatState() {
         return repeatState;
+    }
+
+    public ShuffleState getShuffleState() {
+        return shuffleState;
     }
 
     @Override
@@ -700,6 +707,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         var mp = getActiveMediaPlayer();
         if (mp != null) {
             mp.seek(Duration.seconds(time));
+            mprisNotifyState();
         }
     }
 
@@ -742,8 +750,10 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             var cover = getAlbumCover(file);
             if (cover != null) {
                 albumCoverImageView.setImage(SwingFXUtils.toFXImage(cover, null));
+                saveAlbumArtToTempFile(cover);
             } else {
                 albumCoverImageView.setImage(null);
+                deleteAlbumArtTempFile();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -783,6 +793,28 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             e.printStackTrace();
         }
         return null;
+    }
+
+    /** Writes embedded album art to a temp PNG file so MPRIS can expose it via mpris:artUrl. */
+    private void saveAlbumArtToTempFile(BufferedImage cover) {
+        // Delete previous art file first
+        deleteAlbumArtTempFile();
+        try {
+            Path tmp = Files.createTempFile("sonar_art_", ".png");
+            ImageIO.write(cover, "png", tmp.toFile());
+            currentAlbumArtPath = tmp.toAbsolutePath().toString();
+        } catch (IOException e) {
+            System.err.println("[Sonar] Failed to write album art temp file: " + e);
+        }
+    }
+
+    private void deleteAlbumArtTempFile() {
+        if (currentAlbumArtPath != null) {
+            try {
+                Files.deleteIfExists(Path.of(currentAlbumArtPath));
+            } catch (IOException ignored) {}
+            currentAlbumArtPath = null;
+        }
     }
 
     // ---- Internal helpers ----
@@ -831,6 +863,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 UIManager.setImageToButton(toggleRepeatButton, "/icons/repeat_one.png", 15, 15);
             }
         }
+        if (miniController != null) {
+            miniController.updateRepeatIcon(repeatState);
+        }
     }
 
     private void updateShuffleModeUI() {
@@ -847,6 +882,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 statusLabel.setText("Shuffled next tracks");
                 UIManager.setImageToButton(shuffleButton, "/icons/shuffle.png", 15, 15);
             }
+        }
+        if (miniController != null) {
+            miniController.updateShuffleIcon(shuffleState);
         }
     }
 
@@ -988,6 +1026,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         authorName.setText("No tracks loaded");
         statusLabel.setText("No track selected");
         currentTimeLabel.setText("--:--");
+        deleteAlbumArtTempFile();
     }
 
     // ---- Playlist I/O ----
@@ -1120,7 +1159,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     @Override public String getTrackArtist() { return authorName.getText(); }
     @Override public String getTrackAlbum()  { return albumName.getText(); }
     @Override public String getTrackArtUrl() {
-        if (currentlyPlayingTrackPath != null) return new File(currentlyPlayingTrackPath).toURI().toString();
+        if (currentAlbumArtPath != null) return new File(currentAlbumArtPath).toURI().toString();
         return "";
     }
     @Override public byte[] getTrackArtData() {
