@@ -50,7 +50,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="692.0" prefWidth="950.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="folltrace.sonar.SonarController">
+<VBox prefHeight="692.0" prefWidth="950.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="folltrace.sonar.SonarController">
   <children>
       <AnchorPane prefHeight="0.0" prefWidth="950.0">
          <children>
@@ -70,12 +70,12 @@
                         </ImageView>
                      </children>
                   </AnchorPane>
-                  <Button fx:id="hideButton" mnemonicParsing="false" onMouseReleased="#handleHideApp" text="__">
+                  <Button fx:id="hideButton" mnemonicParsing="false" onMouseReleased="#handleHideApp" styleClass="title-bar" text="__">
                      <font>
                         <Font name="System Bold" size="12.0" />
                      </font>
                   </Button>
-                  <Button fx:id="minimizeButton" mnemonicParsing="false" onMouseReleased="#handleShrink" text="↔" />
+                  <Button fx:id="minimizeButton" mnemonicParsing="false" onMouseReleased="#handleShrink" styleClass="title-bar" text="↔" />
                   <Button fx:id="closeAppButton" mnemonicParsing="false" onMouseReleased="#handleQuitAction" styleClass="title-bar" text="❌" />
                </children>
             </HBox>
@@ -123,7 +123,7 @@
             <Menu mnemonicParsing="false" text="Settings">
               <items>
                   <CheckMenuItem fx:id="darkThemeCheck" mnemonicParsing="false" onAction="#handleThemeChange" text="Dark theme" />
-                  <CheckMenuItem fx:id="minimisedCheck" disable="true" mnemonicParsing="false" text="Minimised" />
+                  <CheckMenuItem fx:id="minimisedCheck" mnemonicParsing="false" onAction="#handleMinimisedCheck" text="Minimised" />
               </items>
             </Menu>
         <Menu mnemonicParsing="false" text="Help">
@@ -190,7 +190,7 @@
                      <image>
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
-                  <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" text="Status Label" />
+                  <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" prefHeight="18.0" prefWidth="150.0" text="Status Label" />
                   <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="📀">
                      <font>
                         <Font size="24.0" />
@@ -206,17 +206,17 @@
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Label fx:id="songName" layoutX="11.0" layoutY="490.0" text="Song">
+                  <Label fx:id="songName" layoutX="11.0" layoutY="490.0" prefHeight="25.0" prefWidth="455.0" text="Song">
                      <font>
                         <Font name="Microsoft Sans Serif" size="18.0" />
                      </font>
                   </Label>
-                  <Label fx:id="authorName" layoutX="12.0" layoutY="512.0" text="Artist">
+                  <Label fx:id="authorName" layoutX="12.0" layoutY="512.0" prefHeight="22.0" prefWidth="455.0" text="Artist">
                      <font>
                         <Font name="Microsoft Sans Serif" size="16.0" />
                      </font>
                   </Label>
-                  <Label fx:id="albumName" layoutX="12.0" layoutY="536.0" text="Album">
+                  <Label fx:id="albumName" layoutX="12.0" layoutY="536.0" prefHeight="20.0" prefWidth="455.0" text="Album">
                      <font>
                         <Font name="Microsoft Sans Serif" size="14.0" />
                      </font>

@@ -27,6 +27,8 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class SonarController implements PlayerCallback, MprisPlayer {
@@ -92,6 +94,12 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private final List<String> playlist = new ArrayList<>();
     private final List<String> originalPlaylist = new ArrayList<>();
     private final Map<String, String> trackNamesToPaths = new HashMap<>();
+    private final Map<String, TrackInfo> trackMetadataCache = new HashMap<>();
+    private final ExecutorService metadataExecutor = Executors.newSingleThreadExecutor(r -> {
+        var t = new Thread(r, "sonar-metadata");
+        t.setDaemon(true);
+        return t;
+    });
     private RepeatState repeatState = RepeatState.OFF;
     private ShuffleState shuffleState = ShuffleState.OFF;
 
@@ -205,6 +213,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
         // Safety net: kill mpv if JVM exits without proper cleanup
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            metadataExecutor.shutdownNow();
             if (player != null) {
                 player.close();
             }
@@ -673,6 +682,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
         stage.show();
         primaryStage.hide();
+        minimisedCheck.setSelected(true);
     }
 
     @FXML
@@ -727,12 +737,25 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         Settings.get().setDarkTheme(dark);
     }
 
+    @FXML
+    private void handleMinimisedCheck() {
+        if (minimisedCheck.isSelected()) {
+            try { handleShrink(); } catch (IOException e) { e.printStackTrace(); }
+        } else {
+            // Restore full mode — close the mini stage if it exists
+            if (miniController != null) {
+                miniController.closeMiniStage();
+            }
+        }
+    }
+
     // ---- Public API ----
 
     public void showMainWindow() {
         if (primaryStage != null) {
             primaryStage.show();
             primaryStage.toFront();
+            minimisedCheck.setSelected(false);
         }
     }
 
@@ -835,16 +858,16 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         return name.substring(0, keep) + "..." + ext;
     }
 
-    /** Applies truncated display text and starts marquee scrolling if needed. */
+    /** Sets the full title on the label and starts marquee scrolling only if
+     *  the text actually overflows the label's visual width. */
     void applyTitleDisplay(Label label, String fullTitle) {
         cancelLabelMarquee(label);
-        String display = truncateFilename(fullTitle, 64);
-        label.setText(display);
+        label.setText(fullTitle);
 
         // Re-check after layout to see if text overflows the label
         Platform.runLater(() -> {
-            if (!display.equals(fullTitle) || textExceedsLabel(label, display)) {
-                startLabelMarquee(label, display);
+            if (textExceedsLabel(label, fullTitle)) {
+                startLabelMarquee(label, fullTitle);
             }
         });
     }
@@ -1039,18 +1062,35 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     // ---- Internal helpers ----
 
     private void addFileToPlaylist(File file) {
-        if (file != null && isSupportedFile(file.getName())) {
-            String path = file.getAbsolutePath();
-            if (!playlist.contains(path)) {
-                String duration = getTrackDuration(file);
-                fileListView.getItems().add(new Track(file.getName(), duration));
-                trackNamesToPaths.put(file.getName(), path);
-                playlist.add(path);
-                if (!originalPlaylist.contains(path)) {
-                    originalPlaylist.add(path);
-                }
-            }
+        if (file == null || !isSupportedFile(file.getName())) return;
+        String path = file.getAbsolutePath();
+        if (playlist.contains(path)) return;
+
+        String fileName = file.getName();
+        // Add placeholder immediately; fetch real metadata in background
+        fileListView.getItems().add(new Track(fileName, "Loading..."));
+        trackNamesToPaths.put(fileName, path);
+        playlist.add(path);
+        if (!originalPlaylist.contains(path)) {
+            originalPlaylist.add(path);
         }
+
+        metadataExecutor.submit(() -> {
+            var info = getTrackMetadata(file);
+            Platform.runLater(() -> {
+                String duration = (info != null && info.durationSecs >= 0)
+                        ? formatTrackLength((long) info.durationSecs * 1000)
+                        : "Unknown";
+                // Update the ListView item in place
+                int idx = playlist.indexOf(path);
+                if (idx >= 0 && idx < fileListView.getItems().size()) {
+                    fileListView.getItems().set(idx, new Track(fileName, duration));
+                }
+                if (info != null) {
+                    trackMetadataCache.put(path, info);
+                }
+            });
+        });
     }
 
     private void updateFileList(File folder) {
@@ -1226,7 +1266,15 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         fileListView.getItems().clear();
         for (String path : playlist) {
             var file = new File(path);
-            fileListView.getItems().add(new Track(file.getName(), getTrackDuration(file)));
+            String duration;
+            var cached = trackMetadataCache.get(path);
+            if (cached != null && cached.durationSecs >= 0) {
+                duration = formatTrackLength((long) cached.durationSecs * 1000);
+            } else {
+                duration = getTrackDuration(file);
+                // Cache whatever we got (even "Unknown") to avoid re-fetching
+            }
+            fileListView.getItems().add(new Track(file.getName(), duration));
         }
     }
 

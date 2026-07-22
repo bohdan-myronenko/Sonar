@@ -123,17 +123,17 @@ public class MiniController {
         if (p == null || p.getDuration() <= 0) return;
 
         // Track info — use main controller's already-resolved labels
-        songLabel.setText(SonarController.truncateFilename(sonarController.getTrackTitle(), 64));
-        artistLabel.setText(sonarController.getTrackArtist());
-        albumLabel.setText(sonarController.getTrackAlbum());
+        songLabel.setText(sonarController.getTrackTitle());
+                artistLabel.setText(sonarController.getTrackArtist());
+                albumLabel.setText(sonarController.getTrackAlbum());
 
-        // Start marquee on song label if text overflows
-        SonarController.cancelLabelMarquee(songLabel);
-        Platform.runLater(() -> {
-            if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
-                SonarController.startLabelMarquee(songLabel, songLabel.getText());
-            }
-        });
+                // Start marquee on song label if text overflows
+                SonarController.cancelLabelMarquee(songLabel);
+                Platform.runLater(() -> {
+                    if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
+                        SonarController.startLabelMarquee(songLabel, songLabel.getText());
+                    }
+                });
 
         // Seek slider
         double duration = p.getDuration();
@@ -217,9 +217,9 @@ public class MiniController {
     }
 
     public void updateTrackInfo(String title, String artist, String album) {
-        songLabel.setText(SonarController.truncateFilename(title, 64));
-        artistLabel.setText(artist);
-        albumLabel.setText(album);
+        songLabel.setText(title);
+                artistLabel.setText(artist);
+                albumLabel.setText(album);
 
         SonarController.cancelLabelMarquee(songLabel);
         Platform.runLater(() -> {
@@ -260,6 +260,17 @@ public class MiniController {
             miniStage = (Stage) songLabel.getScene().getWindow();
         }
         miniStage.close();
+    }
+
+    /** Close the mini stage and restore the main window. */
+    public void closeMiniStage() {
+        sonarController.showMainWindow();
+        if (miniStage == null) {
+            miniStage = (Stage) songLabel.getScene().getWindow();
+        }
+        if (miniStage != null) {
+            miniStage.close();
+        }
     }
 
     // ---- Playback control handlers ----
