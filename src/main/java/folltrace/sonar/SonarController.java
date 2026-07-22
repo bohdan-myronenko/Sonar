@@ -27,6 +27,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class SonarController implements PlayerCallback, MprisPlayer {
 
@@ -879,6 +880,51 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         }
     }
 
+    /** Metadata extracted via ffprobe for any audio format. */
+    private record TrackInfo(int durationSecs, String artist, String title) {}
+
+    /**
+     * Extracts duration, artist, and title from any audio file using ffprobe.
+     * Returns null if ffprobe fails entirely. Individual fields may be null/empty
+     * when the file doesn't contain that tag.
+     */
+    private TrackInfo getTrackMetadata(File file) {
+        try {
+            var pb = new ProcessBuilder(
+                    "ffprobe", "-v", "quiet",
+                    "-show_entries", "format=duration:format_tags=title,artist",
+                    "-of", "csv=p=0",
+                    file.getAbsolutePath());
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            var p = pb.start();
+            String line;
+            try (var r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                line = r.readLine();
+            }
+            p.waitFor(3, TimeUnit.SECONDS);
+            p.destroyForcibly();
+
+            if (line != null && !line.isBlank()) {
+                String[] parts = line.split(",", -1);
+                // format=duration:format_tags returns: duration,title,artist
+                int idx = 0;
+                double durSecs = -1;
+                if (idx < parts.length && !parts[idx].isBlank()
+                        && !parts[idx].equals("N/A")) {
+                    durSecs = Double.parseDouble(parts[idx].trim());
+                }
+                idx++;
+                String title = (idx < parts.length && !parts[idx].isBlank()) ? parts[idx].trim() : null;
+                idx++;
+                String artist = (idx < parts.length && !parts[idx].isBlank()) ? parts[idx].trim() : null;
+                return new TrackInfo((int) Math.round(durSecs), artist, title);
+            }
+        } catch (Exception e) {
+            // ffprobe not available or failed
+        }
+        return null;
+    }
+
     public String getTrackDuration(File file) {
         // Use ffprobe for accurate duration on any format
         try {
@@ -1207,20 +1253,26 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     public void savePlaylistAsExtendedM3U() {
         var chooser = new FileChooser();
         chooser.setTitle("Save Playlist");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("M3U Files", "*.m3u"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("M3U Playlist", "*.m3u", "*.m3u8"));
         File file = chooser.showSaveDialog(null);
         if (file == null) return;
+        // Append .m3u if the user didn't type an extension
+        String name = file.getName().toLowerCase();
+        if (!name.endsWith(".m3u") && !name.endsWith(".m3u8")) {
+            file = new File(file.getParentFile(), file.getName() + ".m3u");
+        }
 
         try (var writer = new PrintWriter(file)) {
             writer.println("#EXTM3U");
             for (String path : playlist) {
-                var mp3 = new Mp3File(path);
-                if (mp3.hasId3v2Tag()) {
-                    var tag = mp3.getId3v2Tag();
-                    writer.println("#EXTINF:" + mp3.getLengthInSeconds() + ","
-                            + tag.getArtist() + " - " + tag.getTitle());
-                    writer.println(path);
+                var info = getTrackMetadata(new File(path));
+                if (info != null && info.durationSecs >= 0) {
+                    String display = (info.artist != null && info.title != null)
+                            ? info.artist + " - " + info.title
+                            : new File(path).getName();
+                    writer.println("#EXTINF:" + info.durationSecs + "," + display);
                 }
+                writer.println(path);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1230,7 +1282,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     public void loadPlaylist() {
         var chooser = new FileChooser();
         chooser.setTitle("Open Playlist");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("M3U Files", "*.m3u"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("M3U Playlist", "*.m3u", "*.m3u8"));
         File file = chooser.showOpenDialog(null);
         if (file == null) return;
 
