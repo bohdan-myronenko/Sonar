@@ -191,17 +191,17 @@
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
                   <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" prefHeight="18.0" prefWidth="150.0" text="Status Label" />
-                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" text="📀">
+                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" styleClass="player-button" text="📀">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" text="💾">
+                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" styleClass="player-button" text="💾">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" text="❌">
+                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" styleClass="player-button" text="❌">
                      <font>
                         <Font size="24.0" />
                      </font>

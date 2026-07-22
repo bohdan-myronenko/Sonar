@@ -273,6 +273,11 @@ public class MiniController {
         }
     }
 
+    /** Returns the mini player's Scene (for theme syncing), or null if not yet shown. */
+    public javafx.scene.Scene getScene() {
+        return songLabel != null ? songLabel.getScene() : null;
+    }
+
     // ---- Playback control handlers ----
 
     @FXML private void switchPlayPause()   { sonarController.handleTogglePlayPause(); }

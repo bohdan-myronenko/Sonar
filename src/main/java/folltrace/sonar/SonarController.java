@@ -672,8 +672,12 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         stage.getIcons().add(new Image(Objects.requireNonNull(getClass().getResourceAsStream("/logo.png"))));
         stage.setResizable(false);
         stage.setTitle("Sonar");
-        stage.setScene(new Scene(root));
+        var miniScene = new Scene(root);
+        stage.setScene(miniScene);
         stage.initStyle(StageStyle.UNDECORATED);
+
+        // Sync dark theme to the mini window
+        UIManager.changeTheme(miniScene, darkThemeCheck.isSelected());
 
         stage.setOnHidden(e -> {
             setMiniController(null);
@@ -734,6 +738,13 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     public void handleThemeChange() {
         boolean dark = darkThemeCheck.isSelected();
         UIManager.changeTheme(scene, dark);
+        // Also sync the mini window if it's showing
+        if (miniController != null) {
+            var miniScene = miniController.getScene();
+            if (miniScene != null) {
+                UIManager.changeTheme(miniScene, dark);
+            }
+        }
         Settings.get().setDarkTheme(dark);
     }
 
