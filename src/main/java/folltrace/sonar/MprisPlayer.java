@@ -1,8 +1,5 @@
 package folltrace.sonar;
 
-import javafx.scene.media.MediaPlayer;
-
-import java.io.File;
 import java.util.List;
 
 /**

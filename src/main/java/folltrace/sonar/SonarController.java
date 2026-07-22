@@ -1,8 +1,6 @@
 package folltrace.sonar;
 
-import com.mpatric.mp3agic.InvalidDataException;
 import com.mpatric.mp3agic.Mp3File;
-import com.mpatric.mp3agic.UnsupportedTagException;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -18,10 +16,9 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.media.Media;
-import javafx.scene.media.MediaPlayer;
 import javafx.stage.*;
 import javafx.util.Duration;
+import javafx.scene.text.Text;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -101,17 +98,20 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private double dragOffsetX;
     private double dragOffsetY;
 
-    private MediaPlayer mediaPlayer;
     private Player player;
     private MiniController miniController;
     private String currentlyPlayingTrackPath;
     private String currentAlbumArtPath;   // temp file holding album art for MPRIS
+    private String currentTrackTitle;     // full title for D-Bus (label may show truncated)
     private MprisService mpris;
     private volatile boolean isPlaying;  // tracked so MPRIS reads correct state immediately
     private long lastMprisPositionSync;   // throttle position updates to D-Bus
 
     private static final List<String> SUPPORTED_EXTENSIONS =
-            List.of(".mp3", ".wav", ".aac", ".m4a");
+            List.of(".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".opus",
+                    ".aiff", ".aif", ".wma", ".wavpack", ".wv", ".ape", ".mka",
+                    ".ac3", ".dts", ".alac", ".tta", ".spx", ".ra", ".rm", ".mid",
+                    ".midi", ".mod", ".xm", ".s3m", ".it");
 
     // ---- PlayerCallback ----
 
@@ -125,17 +125,12 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     @Override
-    public void onMediaReady(MediaPlayer mp) {
-        var wasNull = mediaPlayer == null;
-        mediaPlayer = mp;
-        if (wasNull) {
-            setupMediaPlayerListeners(mp);
-        }
+    public void onMediaReady(double durationSeconds) {
         isPlaying = true;
-        updateUIForMediaPlayer(mp);
-        updateSongInfo(mp.getMedia());
+        updateUIForMediaPlayer(durationSeconds);
+        updateSongInfo(player.getSourceUri());
         if (miniController != null) {
-            miniController.updateSeekSliderMax(mp.getMedia().getDuration().toSeconds());
+            miniController.updateSeekSliderMax(durationSeconds);
             miniController.pullStateFromMain();
         }
         mprisNotifyState();
@@ -143,15 +138,15 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @Override
     public void onNextTrack() {
-        int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
+        int currentIndex = playlist.indexOf(currentlyPlayingTrackPath);
         int nextIndex = currentIndex + 1;
 
-        if (nextIndex < playlist.size()) {
+        if (nextIndex >= 0 && nextIndex < playlist.size()) {
             playSelectedTrack(nextIndex);
-        } else if (repeatState == RepeatState.REPEAT_ALL) {
+        } else if (repeatState == RepeatState.REPEAT_ALL && !playlist.isEmpty()) {
             playSelectedTrack(0);
         } else {
-            if (mediaPlayer != null) mediaPlayer.stop();
+            if (player != null) player.stop();
             timeline.stop();
             isPlaying = false;
             statusLabel.setText("Playback stopped");
@@ -162,7 +157,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @Override
     public void onPreviousTrack() {
-        int currentIndex = fileListView.getSelectionModel().getSelectedIndex();
+        int currentIndex = playlist.indexOf(currentlyPlayingTrackPath);
         int prevIndex = currentIndex - 1;
         if (prevIndex >= 0) {
             playSelectedTrack(prevIndex);
@@ -176,12 +171,17 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     public void setScene(Scene scene) {
         this.scene = scene;
         setupMediaKeys();
+        if (pendingDarkTheme) {
+            darkThemeCheck.setSelected(true);
+            UIManager.changeTheme(scene, true);
+            pendingDarkTheme = false;
+        }
     }
     public void setPrimaryStage(Stage stage) { this.primaryStage = stage; }
     public void setMiniController(MiniController mc) { this.miniController = mc; }
 
-    public MediaPlayer getMediaPlayer() {
-        return player != null ? player.getMediaPlayer() : null;
+    public Player getPlayer() {
+        return player;
     }
 
     public javafx.scene.image.ImageView getAlbumCoverImageView() {
@@ -192,10 +192,22 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @FXML
     public void initialize() {
-        player = new Player(this);
-
-        // Do NOT create a dummy MediaPlayer — start with null.
         // Listeners are attached lazily when the first real track is loaded.
+
+        try {
+            player = new Player(this);
+        } catch (IOException e) {
+            statusLabel.setText("Error: mpv not found. Install mpv.");
+            e.printStackTrace();
+            return;
+        }
+
+        // Safety net: kill mpv if JVM exits without proper cleanup
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (player != null) {
+                player.close();
+            }
+        }, "mpv-shutdown"));
 
         setupButtonIcons();
         setupInitialLabels();
@@ -205,6 +217,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         setupFileListView();
         setupDragAndDrop();
         setupSoundIconToggle();
+
+        // Restore saved settings
+        restoreSettings();
 
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             updateSliders();
@@ -226,6 +241,23 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         mpris.start();
 
         // Setup media key capture (scenes are set later via setScene)
+    }
+
+    private boolean pendingDarkTheme;
+
+    private void restoreSettings() {
+        var s = Settings.get();
+
+        // Volume
+        double savedVolume = s.getVolume();
+        volumeSlider.setValue(savedVolume);
+        player.setVolume(savedVolume);
+        int pct = (int) Math.round(savedVolume * 100);
+        volumeLabel.setText(pct + "%");
+        updateVolumeIcon(pct);
+
+        // Dark theme — deferred until scene is available
+        pendingDarkTheme = s.getDarkTheme();
     }
 
     /**
@@ -305,11 +337,18 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         });
     }
 
+    /** Returns the Player instance if a track is loaded. */
+    private Player getActivePlayer() {
+        if (player == null) return null;
+        if (player.getDuration() <= 0 && !player.isPlaying()) return null;
+        return player;
+    }
+
     private void setupVolumeSlider() {
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            var mp = getActiveMediaPlayer();
-            if (mp != null) {
-                mp.setVolume(newVal.doubleValue());
+            var p = getActivePlayer();
+            if (p != null) {
+                p.setVolume(newVal.doubleValue());
             }
             int percent = (int) Math.round(newVal.doubleValue() * 100);
             volumeLabel.setText(percent + "%");
@@ -318,41 +357,26 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         });
     }
 
-    /** Returns the currently playing MediaPlayer — the real one from Player, not a dummy */
-    private MediaPlayer getActiveMediaPlayer() {
-        return player != null ? player.getMediaPlayer() : null;
-    }
-
-    private void setupMediaPlayerListeners(MediaPlayer mp) {
-        mp.setOnReady(() -> {
-            seekSlider.setMax(mp.getMedia().getDuration().toSeconds());
-            updateSongInfo(mp.getMedia());
-        });
-
-        mp.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
-            double currentTime = newTime.toSeconds();
-            seekSlider.setValue(currentTime);
-            if (miniController != null) {
-                Platform.runLater(() -> miniController.updateSeekSlider(currentTime));
-            }
-        });
+    private void setupMediaPlayerListeners() {
+        // With mpv backend, position updates come from the timeline tick.
+        // seekSlider max and song info are set in onMediaReady.
     }
 
     private void setupSeekSlider() {
         seekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
             if (!isChanging) {
-                var mp = getActiveMediaPlayer();
-                if (mp != null) mp.seek(Duration.seconds(seekSlider.getValue()));
+                var p = getActivePlayer();
+                if (p != null) p.seek(seekSlider.getValue());
                 mprisNotifyState();
             }
         });
         seekSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (!seekSlider.isValueChanging()) {
-                var mp = getActiveMediaPlayer();
-                if (mp != null) {
-                    double current = mp.getCurrentTime().toSeconds();
+                var p = getActivePlayer();
+                if (p != null) {
+                    double current = p.getPosition();
                     if (Math.abs(current - newVal.doubleValue()) > 0.5) {
-                        mp.seek(Duration.seconds(newVal.doubleValue()));
+                        p.seek(newVal.doubleValue());
                     }
                 }
             }
@@ -462,15 +486,15 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     private void setupSoundIconToggle() {
         soundIcon.setOnMouseClicked(event -> {
-            var mp = getActiveMediaPlayer();
-            if (mp != null) {
-                if (mp.getVolume() > 0) {
-                    previousVolume = mp.getVolume();
-                    mp.setVolume(0);
+            var p = getActivePlayer();
+            if (p != null) {
+                if (p.getVolume() > 0) {
+                    previousVolume = p.getVolume();
+                    p.setVolume(0);
                     volumeSlider.setValue(0);
                     updateVolumeIcon(0);
                 } else {
-                    mp.setVolume(previousVolume);
+                    p.setVolume(previousVolume);
                     volumeSlider.setValue(previousVolume);
                     updateVolumeIcon(previousVolume * 100);
                 }
@@ -482,18 +506,15 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @FXML
     protected void handleTogglePlayPause() {
-        var mp = getActiveMediaPlayer();
-        if (mp == null) return;
-        // Branch on our own tracked flag, NOT mp.getStatus():
-        // JavaFX status transitions are asynchronous, so getStatus() can
-        // lag behind and make the toggle a no-op (play again while playing).
+        var p = getActivePlayer();
+        if (p == null) return;
         if (isPlaying) {
-            mp.pause();
+            p.pause();
             timeline.pause();
             updatePlayPauseButton(false);
             isPlaying = false;
         } else {
-            mp.play();
+            p.play();
             timeline.play();
             updatePlayPauseButton(true);
             isPlaying = true;
@@ -503,9 +524,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @FXML
     void handleStop() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) {
-            mp.stop();
+        var p = getActivePlayer();
+        if (p != null) {
+            p.stop();
         }
         timeline.stop();
         isPlaying = false;
@@ -529,7 +550,11 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         var chooser = new FileChooser();
         chooser.setTitle("Select Music File");
         chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.m4a"));
+                new FileChooser.ExtensionFilter("Audio Files",
+                        "*.mp3", "*.wav", "*.aac", "*.m4a", "*.flac", "*.ogg", "*.opus",
+                        "*.aiff", "*.aif", "*.wma", "*.wavpack", "*.wv", "*.ape", "*.mka",
+                        "*.ac3", "*.dts", "*.alac", "*.tta", "*.spx", "*.ra", "*.rm", "*.mid",
+                        "*.midi", "*.mod", "*.xm", "*.s3m", "*.it"));
         File file = chooser.showOpenDialog((Stage) fileListView.getScene().getWindow());
         addFileToPlaylist(file);
     }
@@ -610,6 +635,10 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     @FXML
     private void handleQuitAction() {
         closeMpris();
+        if (player != null) {
+            player.close();
+            player = null;
+        }
         ((Stage) closeAppButton.getScene().getWindow()).close();
     }
 
@@ -653,9 +682,10 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         Track selected = fileListView.getSelectionModel().getSelectedItem();
         String path = trackNamesToPaths.get(selected.name());
 
-        var mp = getActiveMediaPlayer();
-        boolean wasPlaying = mp != null
-                && mp.getMedia().getSource().equals(new File(path).toURI().toString());
+        var p = getActivePlayer();
+        boolean wasPlaying = p != null
+                && new File(currentlyPlayingTrackPath).toURI().toString()
+                   .equals(new File(path).toURI().toString());
 
         fileListView.getItems().remove(idx);
         trackNamesToPaths.remove(selected.name());
@@ -666,11 +696,11 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 if (!playlist.isEmpty()) {
                     playSelectedTrack(Math.min(idx, playlist.size() - 1));
                 } else {
-                    mp.stop();
+                    p.stop();
                     statusLabel.setText("Playback stopped");
                 }
             } else {
-                player.stopMedia();
+                player.stop();
                 if (idx < playlist.size()) {
                     playSelectedTrack(idx);
                 } else if (repeatState == RepeatState.REPEAT_ALL && !playlist.isEmpty()) {
@@ -691,7 +721,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @FXML
     public void handleThemeChange() {
-        UIManager.changeTheme(scene, darkThemeCheck.isSelected());
+        boolean dark = darkThemeCheck.isSelected();
+        UIManager.changeTheme(scene, dark);
+        Settings.get().setDarkTheme(dark);
     }
 
     // ---- Public API ----
@@ -704,17 +736,17 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     public void updateMediaPlayerTime(double time) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) {
-            mp.seek(Duration.seconds(time));
+        var p = getActivePlayer();
+        if (p != null) {
+            p.seek(time);
             mprisNotifyState();
         }
     }
 
     public void onVolumeChanged(double newVolume) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) {
-            mp.setVolume(newVolume / 100.0);
+        var p = getActivePlayer();
+        if (p != null) {
+            p.setVolume(newVolume / 100.0);
         }
         if (volumeSlider != null) {
             volumeSlider.setValue(newVolume / 100.0);
@@ -723,21 +755,20 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             miniController.updateVolumeSlider(newVolume);
         }
         updateVolumeIcon(newVolume);
+        Settings.get().setVolume(newVolume / 100.0);
         mprisNotifyState();
     }
 
-    public void updateSongInfo(Media media) {
-        var meta = media.getMetadata();
-
-        // Try metadata first, fall back to filename
-        String title = null, artist = null, album = null;
-        if (meta.containsKey("title"))  title  = meta.get("title").toString();
-        if (meta.containsKey("album"))  album  = meta.get("album").toString();
-        if (meta.containsKey("artist")) artist = meta.get("artist").toString();
+    public void updateSongInfo(String sourceUri) {
+        var meta = player.getMetadata();
+        // mpv metadata keys are case-sensitive; do a case-insensitive lookup
+        String title  = getMetaCI(meta, "title");
+        String artist = getMetaCI(meta, "artist");
+        String album  = getMetaCI(meta, "album");
 
         // Fallback: extract from filename if metadata is missing
         try {
-            var uri = new URI(media.getSource());
+            var uri = new URI(sourceUri);
             var file = new File(uri);
             if (title == null || title.isBlank()) {
                 String name = file.getName();
@@ -762,35 +793,177 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             if (album == null) album = "Unknown Album";
         }
 
-        songName.setText(title);
+        currentTrackTitle = title;
+        applyTitleDisplay(songName, title);
         authorName.setText(artist);
         albumName.setText(album);
     }
 
-    public String getTrackDuration(File file) {
-        try {
-            var mp3 = new Mp3File(file.getAbsolutePath());
-            long seconds = mp3.getLengthInSeconds();
-            return formatTrackLength(seconds * 1000);
-        } catch (Exception e) {
-            return "Unknown";
+    /** Case-insensitive lookup in a string→string map. */
+    private static String getMetaCI(Map<String, String> map, String key) {
+        // Try exact match first
+        String v = map.get(key);
+        if (v != null) return v;
+        // Try case-insensitive
+        for (var entry : map.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(key)) {
+                return entry.getValue();
+            }
         }
+        // mpv also reports as "icy-title", "icy-name" etc. for streams
+        if ("title".equalsIgnoreCase(key)) {
+            v = map.get("icy-title");
+            if (v != null) return v;
+        }
+        if ("artist".equalsIgnoreCase(key)) {
+            v = map.get("icy-name");
+            if (v != null) return v;
+        }
+        return null;
+    }
+
+    // ── Title truncation + marquee (label display only; D-Bus gets full title) ─
+
+    /** Truncates a filename at {@code maxLen} chars, preserving the file extension. */
+    static String truncateFilename(String name, int maxLen) {
+        if (name == null || name.length() <= maxLen) return name;
+        int dot = name.lastIndexOf('.');
+        String ext = (dot > 0 && dot > name.length() - 6) ? name.substring(dot) : "";
+        int keep = maxLen - 3 - ext.length();  // 3 = "..."
+        if (keep < 3) keep = 3;
+        return name.substring(0, keep) + "..." + ext;
+    }
+
+    /** Applies truncated display text and starts marquee scrolling if needed. */
+    void applyTitleDisplay(Label label, String fullTitle) {
+        cancelLabelMarquee(label);
+        String display = truncateFilename(fullTitle, 64);
+        label.setText(display);
+
+        // Re-check after layout to see if text overflows the label
+        Platform.runLater(() -> {
+            if (!display.equals(fullTitle) || textExceedsLabel(label, display)) {
+                startLabelMarquee(label, display);
+            }
+        });
+    }
+
+    static boolean textExceedsLabel(Label label, String text) {
+        Text helper = new Text(text);
+        helper.setFont(label.getFont());
+        double tw = helper.getLayoutBounds().getWidth();
+        double lw = label.getWidth() - label.getPadding().getLeft() - label.getPadding().getRight();
+        return tw > lw && lw > 0;
+    }
+
+    static void startLabelMarquee(Label label, String displayText) {
+        // Pad with spaces and repeat so we have a continuous scroll
+        String padded = displayText + "     " + displayText;
+        final int[] pos = {0};
+
+        Timeline tl = new Timeline(new KeyFrame(Duration.millis(280), e -> {
+            pos[0] = (pos[0] + 1) % (displayText.length() + 5);
+            int end = Math.min(pos[0] + displayText.length() + 3, padded.length());
+            label.setText(padded.substring(pos[0], end));
+        }));
+        tl.setCycleCount(Animation.INDEFINITE);
+        label.getProperties().put("marquee_timeline", tl);
+        tl.play();
+    }
+
+    static void cancelLabelMarquee(Label label) {
+        Object obj = label.getProperties().get("marquee_timeline");
+        if (obj instanceof Timeline tl) {
+            tl.stop();
+            label.getProperties().remove("marquee_timeline");
+        }
+    }
+
+    public String getTrackDuration(File file) {
+        // Use ffprobe for accurate duration on any format
+        try {
+            var pb = new ProcessBuilder(
+                    "ffprobe", "-v", "quiet",
+                    "-show_entries", "format=duration",
+                    "-of", "csv=p=0",
+                    file.getAbsolutePath());
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            var p = pb.start();
+            String line;
+            try (var r = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()))) {
+                line = r.readLine();
+            }
+            p.waitFor(3, java.util.concurrent.TimeUnit.SECONDS);
+            p.destroyForcibly();
+            if (line != null && !line.isBlank() && !line.equals("N/A")) {
+                double secs = Double.parseDouble(line.trim());
+                long totalMs = Math.round(secs * 1000);
+                return formatTrackLength(totalMs);
+            }
+        } catch (Exception e) {
+            // ffprobe not available or failed
+        }
+
+        // Fallback: try mp3agic for MP3 files
+        if (file.getName().toLowerCase().endsWith(".mp3")) {
+            try {
+                var mp3 = new Mp3File(file.getAbsolutePath());
+                long seconds = mp3.getLengthInSeconds();
+                return formatTrackLength(seconds * 1000);
+            } catch (Exception ignored) {}
+        }
+
+        return "Unknown";
     }
 
     public BufferedImage getAlbumCover(File file) {
         if (!file.exists()) return null;
-        try {
-            var mp3 = new Mp3File(file.getAbsolutePath());
-            if (mp3.hasId3v2Tag()) {
-                byte[] imageData = mp3.getId3v2Tag().getAlbumImage();
-                if (imageData != null) {
-                    try (var bis = new ByteArrayInputStream(imageData)) {
-                        return ImageIO.read(bis);
+
+        // Try mp3agic for MP3 files (fast, pure Java)
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".mp3")) {
+            try {
+                var mp3 = new Mp3File(file.getAbsolutePath());
+                if (mp3.hasId3v2Tag()) {
+                    byte[] imageData = mp3.getId3v2Tag().getAlbumImage();
+                    if (imageData != null) {
+                        try (var bis = new ByteArrayInputStream(imageData)) {
+                            return ImageIO.read(bis);
+                        }
                     }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (IOException | UnsupportedTagException | InvalidDataException e) {
-            e.printStackTrace();
+        }
+
+        // For non-MP3 formats, use ffmpeg to extract embedded cover art
+        return extractCoverWithFfmpeg(file);
+    }
+
+    /** Extract embedded cover art from any audio format using ffmpeg. */
+    private BufferedImage extractCoverWithFfmpeg(File audioFile) {
+        try {
+            Path tmpCover = Files.createTempFile("sonar_ffcover_", ".jpg");
+            var pb = new ProcessBuilder(
+                    "ffmpeg", "-y", "-i", audioFile.getAbsolutePath(),
+                    "-an", "-vcodec", "copy", "-f", "image2",
+                    tmpCover.toAbsolutePath().toString());
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            Process p = pb.start();
+            p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            p.destroyForcibly();
+
+            if (Files.size(tmpCover) > 0) {
+                BufferedImage img = ImageIO.read(tmpCover.toFile());
+                Files.deleteIfExists(tmpCover);
+                return img;
+            }
+            Files.deleteIfExists(tmpCover);
+        } catch (Exception e) {
+            // ffmpeg not available or extraction failed — silently return null
         }
         return null;
     }
@@ -898,26 +1071,25 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 getClass().getResourceAsStream(path))));
     }
 
-    private void updateUIForMediaPlayer(MediaPlayer mp) {
-        seekSlider.setMax(mp.getMedia().getDuration().toSeconds());
-        mp.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
-            if (!seekSlider.isValueChanging()) {
-                seekSlider.setValue(newTime.toSeconds());
-            }
-        });
+    private void updateUIForMediaPlayer(double durationSeconds) {
+        // Reset slider BEFORE setting max to prevent value clamping
+        // from the previous track's end position to the new track's max,
+        // which would trigger a seek-to-end.
+        seekSlider.setValue(0);
+        seekSlider.setMax(durationSeconds);
         UIManager.setImageToButton(togglePlayPauseButton, "/icons/pause.png", 15, 15);
         statusLabel.setText("Playing");
     }
 
     private void updateSliders() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) {
-            double current = mp.getCurrentTime().toSeconds();
+        var p = getActivePlayer();
+        if (p != null) {
+            double current = p.getPosition();
             Platform.runLater(() -> {
                 seekSlider.setValue(current);
                 if (miniController != null) {
                     miniController.updateSeekSlider(current);
-                    miniController.updateCurrentTimeDisplay(mp);
+                    miniController.updateCurrentTimeDisplay(current);
                 }
             });
         }
@@ -969,11 +1141,11 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     private void updateCurrentTime() {
-        MediaPlayer mp = player.getMediaPlayer();
-        if (mp != null && mp.getStatus() == MediaPlayer.Status.PLAYING) {
-            Duration t = mp.getCurrentTime();
-            int min = (int) t.toMinutes();
-            int sec = (int) t.toSeconds() % 60;
+        var p = player;
+        if (p != null && p.getDuration() > 0) {
+            double t = p.getPosition();
+            int min = (int) (t / 60);
+            int sec = (int) (t % 60);
             currentTimeLabel.setText(String.format("%02d:%02d", min, sec));
         }
     }
@@ -1021,6 +1193,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         var defaultImg = new Image(Objects.requireNonNull(
                 getClass().getResourceAsStream("/no_track_img.png")));
         albumCoverImageView.setImage(defaultImg);
+        cancelLabelMarquee(songName);
         songName.setText("No tracks loaded");
         albumName.setText("No tracks loaded");
         authorName.setText("No tracks loaded");
@@ -1095,21 +1268,22 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     private void handleTogglePlayPauseIfPaused() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null && !isPlaying) {
+        var p = getActivePlayer();
+        if (p != null && !isPlaying) {
             handleTogglePlayPause();
         }
     }
 
     private void handleTogglePlayPauseIfPlaying() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null && isPlaying) {
+        var p = getActivePlayer();
+        if (p != null && isPlaying) {
             handleTogglePlayPause();
         }
     }
 
     @Override public MprisPlayer.PlaybackStatus getPlaybackStatus() {
-        if (getActiveMediaPlayer() == null) return MprisPlayer.PlaybackStatus.Stopped;
+        var p = getActivePlayer();
+        if (p == null || !p.isPlaying()) return MprisPlayer.PlaybackStatus.Stopped;
         return isPlaying ? MprisPlayer.PlaybackStatus.Playing
                          : MprisPlayer.PlaybackStatus.Paused;
     }
@@ -1121,16 +1295,16 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     @Override public void next()         { onNextTrack(); }
     @Override public void previous()     { onPreviousTrack(); }
     @Override public void seek(long offsetMicros) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) {
-            double newPos = mp.getCurrentTime().toSeconds() + (offsetMicros / 1_000_000.0);
-            mp.seek(Duration.seconds(Math.max(0, newPos)));
+        var p = getActivePlayer();
+        if (p != null) {
+            double newPos = p.getPosition() + (offsetMicros / 1_000_000.0);
+            p.seek(Math.max(0, newPos));
         }
         mprisNotifyStateDelayed();
     }
     @Override public void setPosition(String trackId, long posMicros) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) mp.seek(Duration.millis(posMicros / 1000.0));
+        var p = getActivePlayer();
+        if (p != null) p.seek(posMicros / 1_000_000.0);
         mprisNotifyStateDelayed();
     }
     @Override public void openUri(String uri) {
@@ -1149,13 +1323,13 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         return currentlyPlayingTrackPath != null ? Integer.toHexString(currentlyPlayingTrackPath.hashCode()) : "/org/mpris/MediaPlayer2/TrackList/NoTrack";
     }
     @Override public long getTrackDurationMicros() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null && mp.getMedia() != null) {
-            return (long) (mp.getMedia().getDuration().toMillis() * 1000);
+        var p = getActivePlayer();
+        if (p != null) {
+            return (long) (p.getDuration() * 1_000_000);
         }
         return 0;
     }
-    @Override public String getTrackTitle() { return songName.getText(); }
+    @Override public String getTrackTitle() { return currentTrackTitle != null ? currentTrackTitle : songName.getText(); }
     @Override public String getTrackArtist() { return authorName.getText(); }
     @Override public String getTrackAlbum()  { return albumName.getText(); }
     @Override public String getTrackArtUrl() {
@@ -1176,31 +1350,32 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     @Override public double  getVolume() {
-        var mp = getActiveMediaPlayer();
-        return mp != null ? mp.getVolume() : 0.5;
+        var p = getActivePlayer();
+        return p != null ? p.getVolume() : 0.5;
     }
     @Override public void    setVolume(double v) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) mp.setVolume(v);
+        var p = getActivePlayer();
+        if (p != null) p.setVolume(v);
         volumeSlider.setValue(v);
         int pct = (int) Math.round(v * 100);
         volumeLabel.setText(pct + "%");
         updateVolumeIcon(pct);
+        Settings.get().setVolume(v);
     }
     @Override public long    getPositionMicros() {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) return (long) (mp.getCurrentTime().toMillis() * 1000);
+        var p = getActivePlayer();
+        if (p != null) return (long) (p.getPosition() * 1_000_000);
         return 0;
     }
     @Override public double  getMinimumRate() { return 0.5; }
     @Override public double  getMaximumRate() { return 2.0; }
     @Override public double  getRate() {
-        var mp = getActiveMediaPlayer();
-        return mp != null ? mp.getRate() : 1.0;
+        var p = getActivePlayer();
+        return p != null ? p.getRate() : 1.0;
     }
     @Override public void    setRate(double rate) {
-        var mp = getActiveMediaPlayer();
-        if (mp != null) mp.setRate(rate);
+        var p = getActivePlayer();
+        if (p != null) p.setRate(rate);
         mprisNotifyState();
     }
     @Override public boolean getShuffle() { return shuffleState != ShuffleState.OFF; }
@@ -1226,7 +1401,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     @Override public boolean canGoPrevious() { return !playlist.isEmpty(); }
     @Override public boolean canPlay()       { return true; }
     @Override public boolean canPause()      { return true; }
-    @Override public boolean canSeek()       { return getActiveMediaPlayer() != null; }
+    @Override public boolean canSeek()       { return getActivePlayer() != null; }
     @Override public boolean canControl()    { return true; }
 
     @Override public int getTrackCount() { return playlist.size(); }

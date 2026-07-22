@@ -2,9 +2,9 @@
     -fx-background-color: #2b2b2b;
 }
 
-.label, .text{
+.label, .text {
     -fx-text-fill: white;
-    -fx-fill:white
+    -fx-fill: white;
 }
 
 .player-button {
@@ -17,7 +17,7 @@
     -fx-background-color: #393a3d;
 }
 
-.player-toolbar{
+.player-toolbar {
     -fx-background-color: #2b2b2b;
 }
 
@@ -27,16 +27,29 @@
     -fx-prompt-text-fill: gray;
 }
 
-.list-view {
+.list-view,
+.list-view .viewport,
+.list-view .list-cell {
     -fx-background-color: #3c3f41;
     -fx-text-fill: white;
+}
+
+.list-cell:filled:selected,
+.list-cell:filled:focused:selected {
+    -fx-background-color: #4e5255;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #45494c;
+}
+
+.list-cell:empty {
+    -fx-background-color: #3c3f41;
 }
 
 .title-bar {
     -fx-fill: #2b2b2b;
 }
-
-
 
 .menu-bar {
     -fx-background-color: #3c3f41;
@@ -52,10 +65,62 @@
     -fx-background-color: #2b2b2b;
 }
 
+.scroll-pane,
+.scroll-pane .viewport {
+    -fx-background-color: #2b2b2b;
+}
 
+#track_list {
+    -fx-background-color: #2b2b2b;
+}
 
-.scroll-pane {
-    -fx-background: #2b2b2b;
+.anchor-pane {
+    -fx-background-color: #2b2b2b;
+}
+
+/* Window control buttons (close, minimize, shrink) */
+.window-buttons .button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.window-buttons .button:hover {
+    -fx-background-color: #45494c;
+}
+
+#closeAppButton:hover {
+    -fx-background-color: #c42b1c;
+    -fx-text-fill: white;
+}
+
+/* Dark scroll bars */
+.scroll-bar {
+    -fx-background-color: #2b2b2b;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #555;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #777;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #2b2b2b;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #888;
 }
 
 .table-view {
@@ -65,7 +130,8 @@
     -fx-text-fill: white;
 }
 
-.table-row-cell:filled:selected, .table-row-cell:filled:focused:selected {
+.table-row-cell:filled:selected,
+.table-row-cell:filled:focused:selected {
     -fx-background-color: #4e5255;
 }
 
@@ -77,6 +143,6 @@
     -fx-background-color: #666;
 }
 
-.tool-bar{
-    -fx-background-color: #3c3f41;;
+.tool-bar {
+    -fx-background-color: #3c3f41;
 }

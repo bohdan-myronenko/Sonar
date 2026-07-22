@@ -7,7 +7,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
 
 public class MiniController {
@@ -43,11 +42,11 @@ public class MiniController {
     private void initialize() {
         setupButtonIcons();
 
-        // Volume changes from mini slider → propagate to media player
+        // Volume changes from mini slider → propagate to player
         miniVolumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            var mp = sonarController.getMediaPlayer();
-            if (mp != null) {
-                mp.setVolume(newVal.doubleValue());
+            var p = sonarController.getPlayer();
+            if (p != null) {
+                p.setVolume(newVal.doubleValue());
             }
             int percent = (int) Math.round(newVal.doubleValue() * 100);
             volumeLabel.setText(percent + "%");
@@ -78,9 +77,9 @@ public class MiniController {
         // Seek via mini slider — click on track (not during a drag)
         miniSeekSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (!miniSeekSlider.isValueChanging()) {
-                var mp = sonarController.getMediaPlayer();
-                if (mp != null) {
-                    double current = mp.getCurrentTime().toSeconds();
+                var p = sonarController.getPlayer();
+                if (p != null) {
+                    double current = p.getPosition();
                     if (Math.abs(current - newVal.doubleValue()) > 0.5) {
                         sonarController.updateMediaPlayerTime(newVal.doubleValue());
                     }
@@ -120,37 +119,44 @@ public class MiniController {
     // ---- Pull current state from the main controller (called when mini opens) ----
 
     public void pullStateFromMain() {
-        var mp = sonarController.getMediaPlayer();
-        if (mp == null || mp.getMedia() == null) return;
+        var p = sonarController.getPlayer();
+        if (p == null || p.getDuration() <= 0) return;
 
-        // Track info
-        var meta = mp.getMedia().getMetadata();
-        songLabel.setText(meta.containsKey("title")  ? meta.get("title").toString()  : "Unknown");
-        artistLabel.setText(meta.containsKey("artist") ? meta.get("artist").toString() : "Unknown");
-        albumLabel.setText(meta.containsKey("album")  ? meta.get("album").toString()  : "Unknown");
+        // Track info — use main controller's already-resolved labels
+        songLabel.setText(SonarController.truncateFilename(sonarController.getTrackTitle(), 64));
+        artistLabel.setText(sonarController.getTrackArtist());
+        albumLabel.setText(sonarController.getTrackAlbum());
+
+        // Start marquee on song label if text overflows
+        SonarController.cancelLabelMarquee(songLabel);
+        Platform.runLater(() -> {
+            if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
+                SonarController.startLabelMarquee(songLabel, songLabel.getText());
+            }
+        });
 
         // Seek slider
-        double duration = mp.getMedia().getDuration().toSeconds();
+        double duration = p.getDuration();
         if (duration > 0) {
             miniSeekSlider.setMax(duration);
-            miniSeekSlider.setValue(mp.getCurrentTime().toSeconds());
+            miniSeekSlider.setValue(p.getPosition());
         }
 
         // Volume
-        miniVolumeSlider.setValue(mp.getVolume());
-        volumeLabel.setText((int) Math.round(mp.getVolume() * 100) + "%");
+        miniVolumeSlider.setValue(p.getVolume());
+        volumeLabel.setText((int) Math.round(p.getVolume() * 100) + "%");
 
         // Current time
-        updateCurrentTimeDisplay(mp);
+        updateCurrentTimeDisplay(p.getPosition());
 
-        // Album art
+        // Album art — always sync, even when null (clears stale art)
         var mainArt = sonarController.getAlbumCoverImageView();
-        if (mainArt != null && mainArt.getImage() != null) {
+        if (mainArt != null) {
             miniAlbumArt.setImage(mainArt.getImage());
         }
 
         // Play/pause button state
-        updatePlayPauseButton(mp.getStatus() == MediaPlayer.Status.PLAYING);
+        updatePlayPauseButton(p.isPlaying());
 
         // Repeat / Shuffle state
         updateRepeatIcon(sonarController.getRepeatState());
@@ -181,11 +187,9 @@ public class MiniController {
         }
     }
 
-    public void updateCurrentTimeDisplay(MediaPlayer mp) {
-        if (mp == null) return;
-        var t = mp.getCurrentTime();
-        int min = (int) t.toMinutes();
-        int sec = (int) t.toSeconds() % 60;
+    public void updateCurrentTimeDisplay(double positionSeconds) {
+        int min = (int) (positionSeconds / 60);
+        int sec = (int) (positionSeconds % 60);
         currentTimeLabel.setText(String.format("%02d:%02d", min, sec));
     }
 
@@ -213,9 +217,16 @@ public class MiniController {
     }
 
     public void updateTrackInfo(String title, String artist, String album) {
-        songLabel.setText(title);
+        songLabel.setText(SonarController.truncateFilename(title, 64));
         artistLabel.setText(artist);
         albumLabel.setText(album);
+
+        SonarController.cancelLabelMarquee(songLabel);
+        Platform.runLater(() -> {
+            if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
+                SonarController.startLabelMarquee(songLabel, songLabel.getText());
+            }
+        });
     }
 
     public ImageView getAlbumArtView() {

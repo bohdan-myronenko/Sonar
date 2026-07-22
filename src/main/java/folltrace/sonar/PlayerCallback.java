@@ -1,10 +1,10 @@
 package folltrace.sonar;
 
-import javafx.scene.media.MediaPlayer;
-
 public interface PlayerCallback {
-    void onMediaReady(MediaPlayer duration);
+    /** Called when a track is loaded and its duration is known. */
+    void onMediaReady(double durationSeconds);
     void onNextTrack();
     void onPreviousTrack();
     RepeatState getRepeatState();
+    ShuffleState getShuffleState();
 }

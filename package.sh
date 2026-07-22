@@ -73,7 +73,7 @@ MP="$MP:target/classes"
 "${JDK_BIN}/jlink" --output "$JLINK" --module-path "$MP" \
       --add-modules java.base,java.desktop,java.logging,java.scripting,java.xml,java.datatransfer,jdk.unsupported,jdk.net,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.swing,mp3agic,folltrace.sonar \
       --launcher "sonar=folltrace.sonar/folltrace.sonar.SonarMain" \
-      --strip-debug --no-header-files --no-man-pages --compress=2
+      --strip-debug --no-header-files --no-man-pages --compress=zip-6
 
 # ── Step 4: Assemble the package directory ────────────────────────
 echo "=== Step 4: Assemble package ==="

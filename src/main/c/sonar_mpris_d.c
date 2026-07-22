@@ -1014,7 +1014,8 @@ static void send_reply_variant(DBusMessage *msg, int type, const void *val) {
  * ────────────────────────────────────────────── */
 static void cleanup(void) {
     if (conn) {
-        dbus_connection_close(conn);
+        /* conn is a shared session-bus connection obtained via dbus_bus_get().
+         * Shared connections MUST NOT be closed — just release our reference. */
         dbus_connection_unref(conn);
         conn = NULL;
     }

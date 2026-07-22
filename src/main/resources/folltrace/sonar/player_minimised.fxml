@@ -22,7 +22,7 @@
             </ImageView>
             <Slider fx:id="miniSeekSlider" layoutX="15.0" layoutY="149.0" prefHeight="14.0" prefWidth="308.0" />
             <Slider fx:id="miniVolumeSlider" layoutX="335.0" layoutY="51.0" max="1.0" orientation="VERTICAL" prefHeight="99.0" prefWidth="14.0" value="0.5" />
-            <Label fx:id="songLabel" layoutX="117.0" layoutY="40.0" text="No tracks loaded">
+            <Label fx:id="songLabel" layoutX="117.0" layoutY="40.0" maxWidth="210.0" text="No tracks loaded" textOverrun="CLIP">
                <font>
                   <Font name="Microsoft Sans Serif" size="16.0" />
                </font>
