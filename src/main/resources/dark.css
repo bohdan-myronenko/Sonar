@@ -59,16 +59,42 @@
 }
 
 .window-buttons .button {
-    -fx-background-color: transparent;
+    -fx-background-color:
+        derive(#2b2b2b, 40%),
+        #555,
+        #4a4a4a,
+        linear-gradient(from 0% 0% to 0% 100%,
+                        #5a5a5a 0%, #484848 100%);
+    -fx-background-insets: 0 0 -1 0, 0, 1, 2;
+    -fx-background-radius: 3px, 3px, 2px, 1px;
     -fx-text-fill: #ddd;
 }
 
 .window-buttons .button:hover {
-    -fx-background-color: #45494c;
+    -fx-background-color:
+        derive(#2b2b2b, 40%),
+        #555,
+        #505050,
+        linear-gradient(from 0% 0% to 0% 100%,
+                        #606060 0%, #4e4e4e 100%);
+}
+
+.window-buttons .button:pressed {
+    -fx-background-color:
+        derive(#2b2b2b, 40%),
+        #555,
+        #3a3a3a,
+        linear-gradient(from 0% 0% to 0% 100%,
+                        #424242 0%, #3a3a3a 100%);
 }
 
 #closeAppButton:hover {
-    -fx-background-color: #c42b1c;
+    -fx-background-color:
+        derive(#c42b1c, -20%),
+        #a02015,
+        #b82018,
+        linear-gradient(from 0% 0% to 0% 100%,
+                        #d42b1c 0%, #a82016 100%);
     -fx-text-fill: white;
 }
 

@@ -18,7 +18,7 @@ JDK_BIN="${JAVA_HOME}/bin"
 
 VERSION="1.0"
 JFX="27-ea+25"
-MP3AGIC="0.9.1"
+JNA="5.14.0"
 OUTPUT="target/sonar-${VERSION}-linux.tar.gz"
 MODS="target/mods"
 GEN="target/genmods"
@@ -51,29 +51,32 @@ echo "=== Step 1: Compile & copy deps ==="
 # Restore the C daemon
 cp /tmp/sonar_mpris_d target/sonar_mpris_d
 
-# ── Step 2: Inject module-info into mp3agic (automatic module) ────
-echo "=== Step 2: Inject module-info into mp3agic (automatic module) ==="
+# ── Step 2: Inject module-info into automatic modules ─────────────
+echo "=== Step 2: Inject module-info into automatic modules ==="
 rm -rf "$GEN" "$JLINK"
 mkdir -p "$GEN"
-"${JDK_BIN}/jdeps" --generate-module-info "$GEN" "$MODS/mp3agic-${MP3AGIC}.jar"
-mkdir -p "$GEN/mp3agic-classes"
-"${JDK_BIN}/javac" --patch-module "mp3agic=$MODS/mp3agic-${MP3AGIC}.jar" \
-      -d "$GEN/mp3agic-classes" "$GEN/mp3agic/module-info.java"
-cp "$MODS/mp3agic-${MP3AGIC}.jar" "$GEN/mp3agic-${MP3AGIC}.jar"
-"${JDK_BIN}/jar" --update --file="$GEN/mp3agic-${MP3AGIC}.jar" \
-    -C "$GEN/mp3agic-classes" module-info.class
+
+# ── JNA ───────────────────────────────────────────────────────────
+"${JDK_BIN}/jdeps" --generate-module-info "$GEN" "$MODS/jna-${JNA}.jar"
+mkdir -p "$GEN/jna-classes"
+"${JDK_BIN}/javac" --patch-module "com.sun.jna=$MODS/jna-${JNA}.jar" \
+      -d "$GEN/jna-classes" "$GEN/com.sun.jna/module-info.java"
+cp "$MODS/jna-${JNA}.jar" "$GEN/jna-${JNA}.jar"
+"${JDK_BIN}/jar" --update --file="$GEN/jna-${JNA}.jar" \
+    -C "$GEN/jna-classes" module-info.class
 
 echo "=== Step 3: jlink ==="
-MP="$GEN/mp3agic-${MP3AGIC}.jar"
-for m in base controls fxml graphics media swing; do
+MP="$GEN/jna-${JNA}.jar"
+for m in base controls fxml graphics; do
     MP="$MP:$MODS/javafx-${m}-${JFX}.jar:$MODS/javafx-${m}-${JFX}-linux.jar"
 done
 MP="$MP:target/classes"
 
 "${JDK_BIN}/jlink" --output "$JLINK" --module-path "$MP" \
-      --add-modules java.base,java.desktop,java.logging,java.scripting,java.xml,java.datatransfer,jdk.unsupported,jdk.net,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.swing,mp3agic,folltrace.sonar \
+      --add-modules java.base,java.desktop,java.logging,java.scripting,java.xml,java.datatransfer,jdk.unsupported,jdk.net,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,com.sun.jna,folltrace.sonar \
       --launcher "sonar=folltrace.sonar/folltrace.sonar.SonarMain" \
-      --strip-debug --no-header-files --no-man-pages --compress=zip-6
+      --strip-debug --no-header-files --no-man-pages --compress=zip-6 \
+      --generate-cds-archive
 
 # ── Step 4: Assemble the package directory ────────────────────────
 echo "=== Step 4: Assemble package ==="
@@ -91,6 +94,7 @@ chmod 755 "$PKG/runtime/lib/sonar_mpris_d"
 # ── Launcher script ───────────────────────────────────────────────
 cat > "$PKG/sonar" << 'LAUNCHER'
 #!/bin/sh
+export JDK_JAVA_OPTIONS="-XX:MaxRAMPercentage=10 -Xms32m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -XX:+UseStringDeduplication"
 exec "$(dirname "$(readlink -f "$0")")/runtime/bin/sonar" "$@"
 LAUNCHER
 chmod 755 "$PKG/sonar"

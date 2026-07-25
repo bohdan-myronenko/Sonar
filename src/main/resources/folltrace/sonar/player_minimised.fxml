@@ -39,42 +39,42 @@
             </Label>
             <Button id="repeat_btn" fx:id="repeat_btn" layoutX="163.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#repeatToggle" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="🔁" />
             <Button fx:id="shuffle_btn" layoutX="188.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#shuffleToggle" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="🔀" />
-            <Button fx:id="stop_btn" layoutX="213.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#stopPlayback" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="⏹" />
-            <Button fx:id="prev_btn" layoutX="238.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#playPreviousTrack" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="⏮">
+            <Button fx:id="stop_btn" layoutX="213.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#stopPlayback" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" />
+            <Button fx:id="prev_btn" layoutX="238.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#playPreviousTrack" prefHeight="26.0" prefWidth="26.0" styleClass="player-button">
                <font>
                   <Font size="11.0" />
                </font>
             </Button>
-            <Button fx:id="play_pause_btn" layoutX="263.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#switchPlayPause" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="⏯" />
-            <Button id="play_btn" fx:id="next_btn" layoutX="288.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#playNextTrack" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" text="⏭" />
+            <Button fx:id="play_pause_btn" layoutX="263.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#switchPlayPause" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" />
+            <Button id="play_btn" fx:id="next_btn" layoutX="288.0" layoutY="116.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#playNextTrack" prefHeight="26.0" prefWidth="26.0" styleClass="player-button" />
             <Label fx:id="currentTimeLabel" alignment="CENTER" contentDisplay="CENTER" layoutX="323.0" layoutY="149.0" prefHeight="17.0" prefWidth="39.0" text="--:--" textAlignment="CENTER" textOverrun="CLIP">
                <font>
                   <Font name="Consolas" size="12.0" />
                </font>
             </Label>
-            <HBox alignment="TOP_RIGHT" prefHeight="24.0" prefWidth="367.0">
+            <HBox alignment="TOP_RIGHT" prefHeight="24.0" prefWidth="367.0" styleClass="window-buttons">
                <children>
                   <AnchorPane fx:id="mini_drag_pane" minHeight="-Infinity" minWidth="-Infinity" prefHeight="26.0" prefWidth="286.0">
                      <children>
-                        <ImageView fitHeight="15.0" fitWidth="15.0" layoutX="5.0" layoutY="4.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fitHeight="18.0" fitWidth="18.0" layoutX="5.0" layoutY="4.0" pickOnBounds="true" preserveRatio="true">
                            <image>
                               <Image url="@../../logo.png" />
                            </image>
                         </ImageView>
-                        <Label layoutX="30.0" layoutY="1.0" prefHeight="20.0" prefWidth="90.0" text="Sonar">
+                        <Label layoutX="30.0" layoutY="3.0" prefHeight="20.0" prefWidth="34.0" text="Sonar">
                            <font>
                               <Font size="11.0" />
                            </font>
                         </Label>
                      </children>
                   </AnchorPane>
-                  <Button fx:id="hide_btn" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleHideApp" prefHeight="26.0" prefWidth="26.0" text="__">
+                  <Button fx:id="hide_btn" mnemonicParsing="false" onMouseReleased="#handleHideApp" styleClass="title-bar" text="__">
                      <font>
                         <Font name="System Bold" size="12.0" />
                      </font>
                   </Button>
-                  <Button fx:id="unshrink_btn" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleUnshrink" prefHeight="26.0" prefWidth="26.0" text="↔" />
-                  <Button fx:id="closeAppButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleClose" prefHeight="26.0" prefWidth="26.0" styleClass="title-bar" text="❌" />
+                  <Button fx:id="unshrink_btn" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleUnshrink" prefHeight="26.0" prefWidth="26.0" styleClass="title-bar" text="↔" textOverrun="CLIP" />
+                  <Button fx:id="closeAppButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleClose" prefHeight="26.0" prefWidth="26.0" styleClass="title-bar" text="❌" textOverrun="CLIP" />
                </children>
             </HBox>
             <Separator layoutX="-4.0" layoutY="25.0" prefHeight="5.0" prefWidth="371.0" />

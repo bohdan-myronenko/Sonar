@@ -1,10 +1,8 @@
 module folltrace.sonar {
     requires javafx.controls;
     requires javafx.fxml;
-    requires javafx.media;
-    requires javafx.swing;
     requires java.desktop;
-    requires mp3agic;
+    requires com.sun.jna;
 
     opens folltrace.sonar to javafx.fxml;
     exports folltrace.sonar;

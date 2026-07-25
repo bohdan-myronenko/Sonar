@@ -149,10 +149,12 @@ public class MiniController {
         // Current time
         updateCurrentTimeDisplay(p.getPosition());
 
-        // Album art — always sync, even when null (clears stale art)
+        // Album art — always sync to match the main window
         var mainArt = sonarController.getAlbumCoverImageView();
         if (mainArt != null) {
             miniAlbumArt.setImage(mainArt.getImage());
+        } else {
+            miniAlbumArt.setImage(null);
         }
 
         // Play/pause button state

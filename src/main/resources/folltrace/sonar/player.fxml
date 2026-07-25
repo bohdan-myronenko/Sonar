@@ -145,32 +145,32 @@
             </ScrollPane>
             <ToolBar id="toolbar" layoutX="1.0" layoutY="594.0" prefHeight="42.0" prefWidth="947.0" styleClass="player-toolbar">
               <items>
-                  <Button id="repeat_btn" fx:id="toggleRepeatButton" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" styleClass="player-button" text="🔁">
+                  <Button id="repeat_btn" fx:id="toggleRepeatButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleRepeatToggle" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="🔁">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button fx:id="shuffleButton" mnemonicParsing="false" onMouseReleased="#handleShuffleAll" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="🔀">
+                  <Button fx:id="shuffleButton" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleShuffleAll" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="🔀">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                <Button fx:id="stopButton" mnemonicParsing="false" onMouseReleased="#handleStop" styleClass="player-button" text="⏹">
+                <Button fx:id="stopButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleStop" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="⏹">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button fx:id="prevButton" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏮">
+                  <Button fx:id="prevButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handlePrevious" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="⏮">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button fx:id="togglePlayPauseButton" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏯">
+                  <Button fx:id="togglePlayPauseButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleTogglePlayPause" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="⏯">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Button id="play_btn" fx:id="nextButton" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="26.0" prefWidth="28.0" styleClass="player-button" text="⏭">
+                  <Button id="play_btn" fx:id="nextButton" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleNext" prefHeight="30.0" prefWidth="32.0" styleClass="player-button" text="⏭">
                      <font>
                         <Font size="15.0" />
                      </font></Button>
-                  <Slider fx:id="seekSlider" prefHeight="14.0" prefWidth="503.0" />
-                  <Label fx:id="currentTimeLabel" text="--:--">
+                  <Slider fx:id="seekSlider" minHeight="-Infinity" minWidth="-Infinity" prefHeight="14.0" prefWidth="524.0" />
+                  <Label fx:id="currentTimeLabel" alignment="CENTER" contentDisplay="CENTER" minHeight="-Infinity" minWidth="-Infinity" prefHeight="17.0" prefWidth="32.0" text="--:--" textAlignment="CENTER">
                      <font>
                         <Font name="Consolas" size="12.0" />
                      </font>
@@ -180,7 +180,7 @@
                         <Image url="@../../icons/vol_min.png" />
                      </image>
                   </ImageView>
-                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" prefHeight="14.0" prefWidth="90.0" value="0.5" />
+                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" minHeight="-Infinity" minWidth="-Infinity" prefHeight="14.0" prefWidth="96.0" value="0.5" />
                   <Label fx:id="volumeLabel" text="0%" />
               </items>
             </ToolBar>
@@ -191,17 +191,17 @@
                         <Image url="@../../no_track_img.png" />
                      </image></ImageView>
                   <Label fx:id="statusLabel" layoutX="13.0" layoutY="553.0" prefHeight="18.0" prefWidth="150.0" text="Status Label" />
-                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" styleClass="player-button" text="📀">
+                  <Button fx:id="loadPlaylistButton" layoutX="482.0" layoutY="152.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleLoadPlaylist" prefHeight="55.0" prefWidth="55.0" styleClass="player-button" text="📀">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" styleClass="player-button" text="💾">
+                  <Button fx:id="savePlaylistButton" layoutX="482.0" layoutY="83.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleSavePlaylist" prefHeight="55.0" prefWidth="55.0" styleClass="player-button" text="💾">
                      <font>
                         <Font size="24.0" />
                      </font>
                   </Button>
-                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="14.0" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" styleClass="player-button" text="❌">
+                  <Button fx:id="deleteButton" layoutX="482.0" layoutY="13.0" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onMouseReleased="#handleDeleteFromPlaylist" prefHeight="55.0" prefWidth="55.0" styleClass="player-button" text="❌">
                      <font>
                         <Font size="24.0" />
                      </font>
@@ -221,9 +221,9 @@
                         <Font name="Microsoft Sans Serif" size="14.0" />
                      </font>
                   </Label>
-                  <Label layoutX="478.0" layoutY="65.0" text="Delete track" textAlignment="CENTER" />
-                  <Label layoutX="483.0" layoutY="134.0" text="Save .m3u" textAlignment="CENTER" />
-                  <Label layoutX="482.0" layoutY="203.0" text="Load .m3u" textAlignment="CENTER" />
+                  <Label layoutX="473.0" layoutY="67.0" text="Delete track" textAlignment="CENTER" />
+                  <Label layoutX="478.0" layoutY="135.0" text="Save .m3u" textAlignment="CENTER" />
+                  <Label layoutX="479.0" layoutY="206.0" text="Load .m3u" textAlignment="CENTER" />
                </children>
             </AnchorPane>
       </children>

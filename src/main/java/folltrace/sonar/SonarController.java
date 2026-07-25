@@ -1,11 +1,9 @@
 package folltrace.sonar;
 
-import com.mpatric.mp3agic.Mp3File;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -20,8 +18,6 @@ import javafx.stage.*;
 import javafx.util.Duration;
 import javafx.scene.text.Text;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
@@ -108,6 +104,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private double dragOffsetY;
 
     private Player player;
+    private volatile boolean playerCreated;
     private MiniController miniController;
     private String currentlyPlayingTrackPath;
     private String currentAlbumArtPath;   // temp file holding album art for MPRIS
@@ -115,6 +112,10 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private MprisService mpris;
     private volatile boolean isPlaying;  // tracked so MPRIS reads correct state immediately
     private long lastMprisPositionSync;   // throttle position updates to D-Bus
+
+    /** Cached fallback album art image — loaded once and reused. */
+    private final Image defaultAlbumArt = new Image(
+            Objects.requireNonNull(getClass().getResourceAsStream("/no_track_img.png")));
 
     private static final List<String> SUPPORTED_EXTENSIONS =
             List.of(".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".opus",
@@ -184,6 +185,8 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             darkThemeCheck.setSelected(true);
             UIManager.changeTheme(scene, true);
             pendingDarkTheme = false;
+            // Refresh volume icon now that dark theme is active
+            updateVolumeIcon(volumeSlider.getValue() * 100);
         }
     }
     public void setPrimaryStage(Stage stage) { this.primaryStage = stage; }
@@ -201,23 +204,8 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     @FXML
     public void initialize() {
-        // Listeners are attached lazily when the first real track is loaded.
-
-        try {
-            player = new Player(this);
-        } catch (IOException e) {
-            statusLabel.setText("Error: mpv not found. Install mpv.");
-            e.printStackTrace();
-            return;
-        }
-
-        // Safety net: kill mpv if JVM exits without proper cleanup
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            metadataExecutor.shutdownNow();
-            if (player != null) {
-                player.close();
-            }
-        }, "mpv-shutdown"));
+        // Player (libmpv) is created lazily on first playSelectedTrack() call
+        // to avoid loading libmpv/FFmpeg at startup when no music is playing.
 
         setupButtonIcons();
         setupInitialLabels();
@@ -258,10 +246,9 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private void restoreSettings() {
         var s = Settings.get();
 
-        // Volume
+        // Restore saved volume to slider UI (applied to Player when lazily created)
         double savedVolume = s.getVolume();
         volumeSlider.setValue(savedVolume);
-        player.setVolume(savedVolume);
         int pct = (int) Math.round(savedVolume * 100);
         volumeLabel.setText(pct + "%");
         updateVolumeIcon(pct);
@@ -352,6 +339,36 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         if (player == null) return null;
         if (player.getDuration() <= 0 && !player.isPlaying()) return null;
         return player;
+    }
+
+    /** Lazily creates the libmpv Player on first use to avoid loading
+     *  libmpv/FFmpeg (~100–200 MB) at startup when no music is playing. */
+    private Player getOrCreatePlayer() {
+        if (player != null) return player;
+        synchronized (this) {
+            if (player != null) return player;
+            try {
+                player = new Player(this);
+            } catch (IOException e) {
+                statusLabel.setText("Error: libmpv not found. Install mpv or libmpv.");
+                e.printStackTrace();
+                return null;
+            }
+            // Apply the volume currently on the slider (restored from settings)
+            player.setVolume(volumeSlider.getValue());
+
+            // Register shutdown hook once to kill mpv on abnormal JVM exit
+            if (!playerCreated) {
+                playerCreated = true;
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    metadataExecutor.shutdownNow();
+                    if (player != null) {
+                        player.close();
+                    }
+                }, "mpv-shutdown"));
+            }
+            return player;
+        }
     }
 
     private void setupVolumeSlider() {
@@ -715,7 +732,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                     statusLabel.setText("Playback stopped");
                 }
             } else {
-                player.stop();
+                p.stop();
                 if (idx < playlist.size()) {
                     playSelectedTrack(idx);
                 } else if (repeatState == RepeatState.REPEAT_ALL && !playlist.isEmpty()) {
@@ -745,6 +762,8 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 UIManager.changeTheme(miniScene, dark);
             }
         }
+        // Refresh volume icon for the new theme
+        updateVolumeIcon(volumeSlider.getValue() * 100);
         Settings.get().setDarkTheme(dark);
     }
 
@@ -813,12 +832,14 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             if (artist == null || artist.isBlank()) artist = "Unknown Artist";
             if (album == null || album.isBlank()) album = "Unknown Album";
 
-            var cover = getAlbumCover(file);
-            if (cover != null) {
-                albumCoverImageView.setImage(SwingFXUtils.toFXImage(cover, null));
-                saveAlbumArtToTempFile(cover);
+            var coverPath = getAlbumCover(file);
+            if (coverPath != null) {
+                albumCoverImageView.setImage(new Image(coverPath.toUri().toString()));
+                // Use the ffmpeg output directly as the MPRIS art URL
+                deleteAlbumArtTempFile();
+                currentAlbumArtPath = coverPath.toAbsolutePath().toString();
             } else {
-                albumCoverImageView.setImage(null);
+                albumCoverImageView.setImage(defaultAlbumArt);
                 deleteAlbumArtTempFile();
             }
         } catch (Exception e) {
@@ -985,45 +1006,16 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             // ffprobe not available or failed
         }
 
-        // Fallback: try mp3agic for MP3 files
-        if (file.getName().toLowerCase().endsWith(".mp3")) {
-            try {
-                var mp3 = new Mp3File(file.getAbsolutePath());
-                long seconds = mp3.getLengthInSeconds();
-                return formatTrackLength(seconds * 1000);
-            } catch (Exception ignored) {}
-        }
-
         return "Unknown";
     }
 
-    public BufferedImage getAlbumCover(File file) {
+    public Path getAlbumCover(File file) {
         if (!file.exists()) return null;
-
-        // Try mp3agic for MP3 files (fast, pure Java)
-        String name = file.getName().toLowerCase();
-        if (name.endsWith(".mp3")) {
-            try {
-                var mp3 = new Mp3File(file.getAbsolutePath());
-                if (mp3.hasId3v2Tag()) {
-                    byte[] imageData = mp3.getId3v2Tag().getAlbumImage();
-                    if (imageData != null) {
-                        try (var bis = new ByteArrayInputStream(imageData)) {
-                            return ImageIO.read(bis);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        // For non-MP3 formats, use ffmpeg to extract embedded cover art
         return extractCoverWithFfmpeg(file);
     }
 
     /** Extract embedded cover art from any audio format using ffmpeg. */
-    private BufferedImage extractCoverWithFfmpeg(File audioFile) {
+    private Path extractCoverWithFfmpeg(File audioFile) {
         try {
             Path tmpCover = Files.createTempFile("sonar_ffcover_", ".jpg");
             var pb = new ProcessBuilder(
@@ -1037,28 +1029,13 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             p.destroyForcibly();
 
             if (Files.size(tmpCover) > 0) {
-                BufferedImage img = ImageIO.read(tmpCover.toFile());
-                Files.deleteIfExists(tmpCover);
-                return img;
+                return tmpCover;
             }
             Files.deleteIfExists(tmpCover);
         } catch (Exception e) {
             // ffmpeg not available or extraction failed — silently return null
         }
         return null;
-    }
-
-    /** Writes embedded album art to a temp PNG file so MPRIS can expose it via mpris:artUrl. */
-    private void saveAlbumArtToTempFile(BufferedImage cover) {
-        // Delete previous art file first
-        deleteAlbumArtTempFile();
-        try {
-            Path tmp = Files.createTempFile("sonar_art_", ".png");
-            ImageIO.write(cover, "png", tmp.toFile());
-            currentAlbumArtPath = tmp.toAbsolutePath().toString();
-        } catch (IOException e) {
-            System.err.println("[Sonar] Failed to write album art temp file: " + e);
-        }
     }
 
     private void deleteAlbumArtTempFile() {
@@ -1164,8 +1141,14 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         else if (volume < 30)     path = "/icons/vol_min.png";
         else if (volume < 70)     path = "/icons/vol_low.png";
         else                      path = "/icons/vol_max.png";
-        soundIcon.setImage(new Image(Objects.requireNonNull(
-                getClass().getResourceAsStream(path))));
+        var img = new Image(Objects.requireNonNull(
+                getClass().getResourceAsStream(path)));
+        soundIcon.setImage(img);
+        if (UIManager.isDarkTheme()) {
+            soundIcon.setEffect(UIManager.getInvertEffect());
+        } else {
+            soundIcon.setEffect(null);
+        }
     }
 
     private void updateUIForMediaPlayer(double durationSeconds) {
@@ -1210,8 +1193,11 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         String path = playlist.get(index);
         currentlyPlayingTrackPath = path;
 
+        var p = getOrCreatePlayer();
+        if (p == null) return;
+
         isPlaying = true;
-        player.playMedia(path);
+        p.playMedia(path);
 
         updateCurrentTime();
         timeline.play();
@@ -1295,9 +1281,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     private void resetTrackInfoDisplay() {
-        var defaultImg = new Image(Objects.requireNonNull(
-                getClass().getResourceAsStream("/no_track_img.png")));
-        albumCoverImageView.setImage(defaultImg);
+        albumCoverImageView.setImage(defaultAlbumArt);
         cancelLabelMarquee(songName);
         songName.setText("No tracks loaded");
         albumName.setText("No tracks loaded");

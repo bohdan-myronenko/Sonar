@@ -1,33 +1,28 @@
 package folltrace.sonar;
 
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+
 import java.io.*;
-import java.net.UnixDomainSocketAddress;
-import java.nio.channels.Channels;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Audio player backed by mpv via JSON IPC over a Unix domain socket.
- * mpv supports virtually every audio format through ffmpeg.
+ * Audio player backed by libmpv via JNA.
+ * mpv runs in-process so it appears as "Sonar" in the system mixer.
  */
 public class Player implements AutoCloseable {
 
-    private Process mpvProcess;
-    private SocketChannel socket;
-    private BufferedWriter writer;
-    private BufferedReader reader;
-    private final Path socketPath;
+    private final Pointer handle;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        var t = new Thread(r, "mpv-ipc");
+        var t = new Thread(r, "mpv-event-loop");
         t.setDaemon(true);
         return t;
     });
+    private final AtomicBoolean running = new AtomicBoolean(true);
 
-    // Cached state updated by the reader thread
+    // Cached state updated by the event thread
     private volatile double position;       // seconds
     private volatile double duration;       // seconds
     private volatile double volume = 1.0;   // 0.0–1.0
@@ -41,101 +36,85 @@ public class Player implements AutoCloseable {
     private double pendingSeekTarget = -1;
 
     private final PlayerCallback callback;
+    private volatile boolean changingTrack;
+    private volatile boolean readyFired;
+
+    /** Observer IDs for {@link #observeProperty}. */
+    private static final long OBS_TIME_POS    = 1;
+    private static final long OBS_DURATION    = 2;
+    private static final long OBS_PAUSE       = 3;
+    private static final long OBS_VOLUME      = 4;
+    private static final long OBS_EOF_REACHED = 6;
+    private static final long OBS_METADATA    = 7;
+    private static final long OBS_PATH        = 8;
 
     public Player(PlayerCallback callback) throws IOException {
         this.callback = callback;
 
-        // Create unique socket path in /tmp
-        socketPath = Files.createTempFile("sonar-mpv-", ".sock");
-        Files.delete(socketPath);
+        // mpv requires the C numeric locale (otherwise mpv_create returns NULL)
+        CLibrary.INSTANCE.setlocale(CLibrary.LC_NUMERIC, "C");
 
-        System.err.println("[mpv] Starting mpv with socket: " + socketPath);
-
-        var pb = new ProcessBuilder(
-                "mpv",
-                "--no-video",
-                "--no-terminal",
-                "--idle=yes",
-                "--audio-display=no",
-                "--volume=100",
-                "--volume-max=100",
-                "--input-ipc-server=" + socketPath.toAbsolutePath()
-        );
-        // Inherit stderr so mpv errors show up in the terminal
-        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-        mpvProcess = pb.start();
-
-        if (!mpvProcess.isAlive()) {
-            throw new IOException("mpv process exited immediately. Is mpv installed?");
+        var m = MpvNative.INSTANCE;
+        handle = m.mpv_create();
+        if (handle == null) {
+            throw new IOException("mpv_create() returned NULL. Is libmpv installed?");
         }
 
-        // Wait for mpv to create the socket (give it up to 5 seconds)
-        for (int i = 0; i < 50; i++) {
-            if (Files.exists(socketPath)) break;
-            if (!mpvProcess.isAlive()) {
-                throw new IOException("mpv process died before creating socket (exit code: "
-                        + mpvProcess.exitValue() + ")");
-            }
-            try { Thread.sleep(100); } catch (InterruptedException e) { break; }
-        }
-        if (!Files.exists(socketPath)) {
-            mpvProcess.destroyForcibly();
-            throw new IOException("mpv did not create IPC socket at " + socketPath);
-        }
+        // Configure mpv before initialization
+        m.mpv_set_option_string(handle, "video", "no");
+        m.mpv_set_option_string(handle, "idle", "yes");
+        m.mpv_set_option_string(handle, "audio-display", "no");
+        m.mpv_set_option_string(handle, "volume", "100");
+        m.mpv_set_option_string(handle, "volume-max", "100");
+        m.mpv_set_option_string(handle, "terminal", "no");
 
-        System.err.println("[mpv] Socket created, connecting...");
-
-        // Connect
-        socket = SocketChannel.open(UnixDomainSocketAddress.of(socketPath));
-        writer = new BufferedWriter(new OutputStreamWriter(
-                Channels.newOutputStream(socket), StandardCharsets.UTF_8));
-        reader = new BufferedReader(new InputStreamReader(
-                Channels.newInputStream(socket), StandardCharsets.UTF_8));
+        int rc = m.mpv_initialize(handle);
+        if (rc < 0) {
+            m.mpv_terminate_destroy(handle);
+            throw new IOException("mpv_initialize() failed: " + rc);
+        }
 
         // Observe properties for live updates
-        observeProperty(1, "time-pos");
-        observeProperty(2, "duration");
-        observeProperty(3, "pause");
-        observeProperty(4, "volume");
-        observeProperty(6, "eof-reached");
-        observeProperty(7, "metadata");
-        observeProperty(8, "path");
+        observeProperty(OBS_TIME_POS,    "time-pos",    MpvNative.MPV_FORMAT_DOUBLE);
+        observeProperty(OBS_DURATION,    "duration",    MpvNative.MPV_FORMAT_DOUBLE);
+        observeProperty(OBS_PAUSE,       "pause",       MpvNative.MPV_FORMAT_FLAG);
+        observeProperty(OBS_VOLUME,      "volume",      MpvNative.MPV_FORMAT_DOUBLE);
+        observeProperty(OBS_EOF_REACHED, "eof-reached", MpvNative.MPV_FORMAT_FLAG);
+        observeProperty(OBS_METADATA,    "metadata",    MpvNative.MPV_FORMAT_NODE);
+        observeProperty(OBS_PATH,        "path",        MpvNative.MPV_FORMAT_STRING);
 
-        // Start the reader loop
-        executor.submit(this::readLoop);
+        // Start the event loop
+        executor.submit(this::eventLoop);
 
-        System.err.println("[mpv] Player ready");
+        System.err.println("[mpv] Player ready (libmpv)");
     }
 
     // ── Public API ──────────────────────────────────────────────────────────
 
-    /** True while we're programmatically changing tracks — suppresses
-     *  spurious end-file → onNextTrack callbacks from the old track. */
-    private volatile boolean changingTrack;
-
     /** Load a file and start playback. */
     public void playMedia(String filePath) {
         System.err.println("[mpv] Loading: " + filePath);
-        changingTrack = true;  // suppress end-file → next-track callback
+        changingTrack = true;
         readyFired = false;
         pendingSeekTarget = -1;
         eof = false;
         duration = 0;
         position = 0;
         sourceUri = new File(filePath).toURI().toString();
-        sendCommand("loadfile", jsonString(filePath), "\"replace\"");
+        // Escape special characters for mpv_command_string shell-like parsing
+        sendCommand("loadfile", quoteArg(filePath), "replace");
     }
 
     /** Resume playback. */
     public void play() {
         paused = false;
-        sendCommand("set_property", jsonString("pause"), "false");
+        MpvNative.INSTANCE.mpv_set_property_string(handle, "pause", "no");
     }
 
     /** Pause playback. */
     public void pause() {
         paused = true;
-        sendCommand("set_property", jsonString("pause"), "true");
+        MpvNative.INSTANCE.mpv_set_property_string(handle, "pause", "yes");
     }
 
     /** Stop playback and unload the current file. */
@@ -150,285 +129,240 @@ public class Player implements AutoCloseable {
     /** Seek to an absolute position in seconds. */
     public void seek(double seconds) {
         pendingSeekTarget = Math.max(0, seconds);
-        sendCommand("seek", String.valueOf(pendingSeekTarget), jsonString("absolute"));
+        sendCommand("seek", String.valueOf(pendingSeekTarget), "absolute");
     }
 
     /** Set volume (0.0 – 1.0). mpv uses 0–100 internally. */
     public void setVolume(double v) {
         volume = Math.min(1.0, Math.max(0.0, v));
-        sendCommand("set_property", jsonString("volume"), String.valueOf(volume * 100));
+        MpvNative.INSTANCE.mpv_set_property_string(handle, "volume",
+                String.valueOf((int) Math.round(volume * 100)));
     }
 
-    /** Get cached volume. */
-    public double getVolume() {
-        return volume;
-    }
+    public double getVolume()   { return volume; }
+    public double getPosition() { return position; }
+    public double getDuration() { return duration; }
 
-    /** Get cached playback position in seconds. */
-    public double getPosition() {
-        return position;
-    }
-
-    /** Get cached track duration in seconds. */
-    public double getDuration() {
-        return duration;
-    }
-
-    /** Whether playback is currently active (not paused/eof). */
     public boolean isPlaying() {
         return !paused && !eof && duration > 0;
     }
 
-    /** Set playback speed/rate. */
     public void setRate(double rate) {
         speed = rate;
-        sendCommand("set_property", jsonString("speed"), String.valueOf(rate));
+        MpvNative.INSTANCE.mpv_set_property_string(handle, "speed", String.valueOf(rate));
     }
 
-    /** Get cached playback speed. */
-    public double getRate() {
-        return speed;
-    }
+    public double getRate() { return speed; }
+    public Map<String, String> getMetadata() { return metadata; }
+    public String getSourceUri() { return sourceUri; }
 
-    /** Get track metadata (title, artist, album, etc.). */
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
+    // ── Helpers ─────────────────────────────────────────────────────────────
 
-    /** Get the URI of the currently loaded media. */
-    public String getSourceUri() {
-        return sourceUri;
-    }
-
-    // ── IPC internals ───────────────────────────────────────────────────────
-
-    /** Send a raw JSON line to mpv. */
-    private synchronized void sendRaw(String json) {
-        if (writer == null) return;
-        try {
-            writer.write(json);
-            writer.flush();
-        } catch (IOException e) {
-            System.err.println("[mpv] write error: " + e.getMessage());
+    /** Send a command via mpv_command_string. */
+    private void sendCommand(String cmd, String... args) {
+        var sb = new StringBuilder(cmd);
+        for (var a : args) {
+            sb.append(' ').append(a);
+        }
+        int rc = MpvNative.INSTANCE.mpv_command_string(handle, sb.toString());
+        if (rc < 0) {
+            System.err.println("[mpv] command error " + rc + ": " + sb);
         }
     }
 
-    /**
-     * Send a JSON command. Each arg is a raw JSON value fragment:
-     * use {@link #jsonString} for strings, bare numbers for numerics,
-     * {@code "true"}/{""false"} for booleans.
-     */
-    private void sendCommand(String cmd, String... jsonArgs) {
-        var sb = new StringBuilder();
-        sb.append("{\"command\":[\"").append(cmd).append('"');
-        for (var a : jsonArgs) {
-            sb.append(',').append(a);
+    /** Shell-quote a path for mpv_command_string. */
+    private static String quoteArg(String s) {
+        // Wrap in double quotes if the path contains spaces or special chars
+        if (s.contains(" ") || s.contains("\"") || s.contains("\\") || s.contains("'")) {
+            return '"' + s.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
         }
-        sb.append("]}\n");
-        sendRaw(sb.toString());
-    }
-
-    /** Wrap a string in JSON quotes with proper escaping. */
-    private static String jsonString(String s) {
-        return '"' + s.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+        return s;
     }
 
     /** Register a property observer. */
-    private void observeProperty(int id, String name) {
-        sendRaw(String.format("{\"command\":[\"observe_property\",%d,\"%s\"]}\n", id, name));
+    private void observeProperty(long id, String name, int format) {
+        MpvNative.INSTANCE.mpv_observe_property(handle, id, name, format);
     }
 
-    // ── Reader loop (runs on dedicated daemon thread) ───────────────────────
+    // ── Event loop (runs on dedicated daemon thread) ────────────────────────
 
-    private void readLoop() {
-        try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.err.println("[mpv] <<< " + line);
-                processMpvLine(line);
-            }
-            System.err.println("[mpv] Connection closed (mpv exited)");
-        } catch (IOException e) {
-            if (!Thread.currentThread().isInterrupted()) {
-                System.err.println("[mpv] read error: " + e.getMessage());
+    private void eventLoop() {
+        var m = MpvNative.INSTANCE;
+        while (running.get()) {
+            Pointer evPtr = m.mpv_wait_event(handle, 0.5);
+            if (evPtr == null) continue;
+
+            int eventId = evPtr.getInt(MpvNative.OFF_EVENT_ID);
+            switch (eventId) {
+                case MpvNative.MPV_EVENT_NONE:
+                    // timeout — nothing to do
+                    break;
+
+                case MpvNative.MPV_EVENT_SHUTDOWN:
+                    System.err.println("[mpv] Shutdown event received");
+                    running.set(false);
+                    break;
+
+                case MpvNative.MPV_EVENT_PROPERTY_CHANGE:
+                    handlePropertyChange(evPtr);
+                    break;
+
+                case MpvNative.MPV_EVENT_END_FILE:
+                    handleEndFile(evPtr);
+                    break;
+
+                case MpvNative.MPV_EVENT_FILE_LOADED:
+                    System.err.println("[mpv] File loaded event");
+                    break;
+
+                default:
+                    // log_message, seek, playback-restart, etc. — ignored
+                    break;
             }
         }
+        System.err.println("[mpv] Event loop exited");
     }
 
-    /** Parse a JSON line from mpv and update cached state. */
-    private void processMpvLine(String line) {
-        // mpv's JSON encoder includes spaces after colons.
-        // Check for "event" key presence, then the event type.
-        if (line.contains("\"event\"")) {
-            if (line.contains("property-change")) {
-                handlePropertyChange(line);
-            } else if (line.contains("end-file")) {
-                handleEndFile();
-            }
-        }
-    }
+    // ── Property change dispatch ────────────────────────────────────────────
 
-    /** Extract a JSON string value for a given key. */
-    private static String extractString(String json, String key) {
-        int i = json.indexOf('"' + key + '"');
-        if (i < 0) return null;
-        i = json.indexOf(':', i);
-        if (i < 0) return null;
-        i++; // skip colon
-        while (i < json.length() && Character.isWhitespace(json.charAt(i))) i++;
-        if (i >= json.length()) return null;
+    private void handlePropertyChange(Pointer evPtr) {
+        long userdata = evPtr.getLong(MpvNative.OFF_EVENT_USERDATA);
+        Pointer propPtr = evPtr.getPointer(MpvNative.OFF_EVENT_DATA);
+        if (propPtr == null) return;
 
-        if (json.charAt(i) == '"') {
-            int start = i + 1;
-            int end = json.indexOf('"', start);
-            if (end < 0) return null;
-            while (end > start && json.charAt(end - 1) == '\\') {
-                end = json.indexOf('"', end + 1);
-                if (end < 0) return null;
-            }
-            return json.substring(start, end);
-        } else if (json.charAt(i) == 'n') {
-            return null; // null
-        }
-        // For numbers, booleans, objects — just return the token
-        int end = i;
-        while (end < json.length() && !Character.isWhitespace(json.charAt(end))
-                && json.charAt(end) != ',' && json.charAt(end) != '}') end++;
-        return json.substring(i, end);
-    }
+        int format = propPtr.getInt(MpvNative.OFF_PROP_FORMAT);
 
-    private void handlePropertyChange(String line) {
-        String propId = extractString(line, "id");
-        if (propId == null) return;
-
-        switch (propId) {
-            case "1" -> { // time-pos
-                String val = extractString(line, "data");
-                if (val != null) {
-                    try {
-                        double newPos = Double.parseDouble(val);
-                        if (pendingSeekTarget >= 0) {
-                            if (Math.abs(newPos - pendingSeekTarget) < SEEK_THRESHOLD
-                                    || Math.abs(newPos - position) < SEEK_THRESHOLD) {
-                                pendingSeekTarget = -1;
-                            }
-                            position = newPos;
-                        } else {
-                            position = newPos;
-                        }
-                        if (duration > 0 && newPos >= 0) {
-                            notifyReady();
-                        }
-                    } catch (NumberFormatException ignored) {}
+        if (userdata == OBS_TIME_POS && format == MpvNative.MPV_FORMAT_DOUBLE) {
+            double newPos = propPtr.getPointer(MpvNative.OFF_PROP_DATA).getDouble(0);
+            if (pendingSeekTarget >= 0) {
+                if (Math.abs(newPos - pendingSeekTarget) < SEEK_THRESHOLD
+                        || Math.abs(newPos - position) < SEEK_THRESHOLD) {
+                    pendingSeekTarget = -1;
                 }
-            }
-            case "2" -> { // duration
-                String val = extractString(line, "data");
-                if (val != null) {
-                    try {
-                        duration = Double.parseDouble(val);
-                        System.err.println("[mpv] duration = " + duration + "s");
-                        if (duration > 0 && position >= 0) {
-                            notifyReady();
-                        }
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-            case "3" -> { // pause
-                String val = extractString(line, "data");
-                paused = "true".equals(val);
-            }
-            case "4" -> { // volume
-                String val = extractString(line, "data");
-                if (val != null) {
-                    try {
-                        volume = Double.parseDouble(val) / 100.0;
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-            case "5" -> { // speed
-                String val = extractString(line, "data");
-                if (val != null) {
-                    try {
-                        speed = Double.parseDouble(val);
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-            case "6" -> { // eof-reached
-                String val = extractString(line, "data");
-                if ("true".equals(val) && !eof) {
-                    System.err.println("[mpv] EOF reached");
-                    handleEndFile();
-                }
-            }
-            case "7" -> { // metadata
-                parseMetadata(line);
-            }
-            case "8" -> { // path
-                String val = extractString(line, "data");
-                if (val != null && !val.isEmpty()) {
-                    sourceUri = new File(val).toURI().toString();
-                }
-            }
-        }
-    }
-
-    private void parseMetadata(String line) {
-        var map = new HashMap<String, String>();
-        int dataIdx = line.indexOf("\"data\":");
-        if (dataIdx < 0) return;
-        int objStart = line.indexOf('{', dataIdx);
-        if (objStart < 0) return;
-
-        int pos = objStart + 1;
-        while (pos < line.length()) {
-            char c = line.charAt(pos);
-            if (c == '}') break;
-            if (c == '"') {
-                int keyEnd = line.indexOf('"', pos + 1);
-                if (keyEnd < 0) break;
-                String key = line.substring(pos + 1, keyEnd);
-                int colon = line.indexOf(':', keyEnd);
-                if (colon < 0) break;
-                int valStart = colon + 1;
-                while (valStart < line.length() && Character.isWhitespace(line.charAt(valStart))) valStart++;
-                if (valStart < line.length() && line.charAt(valStart) == '"') {
-                    int valEnd = line.indexOf('"', valStart + 1);
-                    if (valEnd < 0) break;
-                    map.put(key, line.substring(valStart + 1, valEnd));
-                    pos = valEnd + 1;
-                } else {
-                    int skip = valStart;
-                    while (skip < line.length() && line.charAt(skip) != ','
-                            && line.charAt(skip) != '}') skip++;
-                    pos = skip;
-                }
+                position = newPos;
             } else {
-                pos++;
+                position = newPos;
+            }
+            if (duration > 0 && newPos >= 0) {
+                notifyReady();
+            }
+        } else if (userdata == OBS_DURATION && format == MpvNative.MPV_FORMAT_DOUBLE) {
+            double d = propPtr.getPointer(MpvNative.OFF_PROP_DATA).getDouble(0);
+            if (d > 0 && d != duration) {
+                duration = d;
+                System.err.println("[mpv] duration = " + duration + "s");
+                notifyReady();
+            }
+        } else if (userdata == OBS_PAUSE && format == MpvNative.MPV_FORMAT_FLAG) {
+            int flag = propPtr.getPointer(MpvNative.OFF_PROP_DATA).getInt(0);
+            paused = (flag != 0);
+        } else if (userdata == OBS_VOLUME && format == MpvNative.MPV_FORMAT_DOUBLE) {
+            double v = propPtr.getPointer(MpvNative.OFF_PROP_DATA).getDouble(0);
+            volume = v / 100.0;
+        } else if (userdata == OBS_EOF_REACHED && format == MpvNative.MPV_FORMAT_FLAG) {
+            int flag = propPtr.getPointer(MpvNative.OFF_PROP_DATA).getInt(0);
+            if (flag != 0 && !eof) {
+                System.err.println("[mpv] EOF reached");
+                handleEof();
+            }
+        } else if (userdata == OBS_METADATA && format == MpvNative.MPV_FORMAT_NODE) {
+            parseMetadataNode(propPtr.getPointer(MpvNative.OFF_PROP_DATA));
+        } else if (userdata == OBS_PATH && format == MpvNative.MPV_FORMAT_STRING) {
+            // For MPV_FORMAT_STRING, prop.data is char** — dereference to get the actual char*
+            Pointer dataField = propPtr.getPointer(MpvNative.OFF_PROP_DATA);
+            if (dataField != null) {
+                Pointer strPtr = dataField.getPointer(0);
+                if (strPtr != null) {
+                    String val = strPtr.getString(0);
+                    if (val != null && !val.isEmpty()) {
+                        sourceUri = new File(val).toURI().toString();
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Metadata parsing from mpv_node ──────────────────────────────────────
+
+    /**
+     * Parse an {@code mpv_node} of type {@code MPV_FORMAT_NODE_MAP}
+     * containing string key/value pairs and store them in {@link #metadata}.
+     * <p>
+     * Node layout: {@code { u(8B union, off 0), format(i32, off 8) }} — 16 bytes.
+     * Node-list layout: {@code { num(i32,0) [pad4] values(ptr,8) keys(ptr,16) }} — 24 bytes.
+     */
+    private void parseMetadataNode(Pointer nodePtr) {
+        if (nodePtr == null) return;
+
+        int nodeFmt = nodePtr.getInt(MpvNative.OFF_NODE_FORMAT);
+        if (nodeFmt != MpvNative.MPV_FORMAT_NODE_MAP) return;
+
+        Pointer listPtr = nodePtr.getPointer(MpvNative.OFF_NODE_UNION);
+        if (listPtr == null) return;
+
+        int num = listPtr.getInt(MpvNative.OFF_LIST_NUM);
+        Pointer valuesPtr = listPtr.getPointer(MpvNative.OFF_LIST_VALUES);
+        Pointer keysPtr   = listPtr.getPointer(MpvNative.OFF_LIST_KEYS);
+        if (num <= 0 || valuesPtr == null || keysPtr == null) return;
+
+        var map = new HashMap<String, String>(num);
+        for (int i = 0; i < num; i++) {
+            // keys[i] — pointer to C string
+            Pointer keyPtr = keysPtr.getPointer((long) i * Native.POINTER_SIZE);
+            if (keyPtr == null) continue;
+            String key = keyPtr.getString(0);
+            if (key == null) continue;
+
+            // values[i] — pointer to mpv_node (16 bytes each)
+            Pointer valNodePtr = valuesPtr.share((long) i * 16);
+            int valFmt = valNodePtr.getInt(MpvNative.OFF_NODE_FORMAT);
+            if (valFmt == MpvNative.MPV_FORMAT_STRING) {
+                Pointer strPtr = valNodePtr.getPointer(MpvNative.OFF_NODE_UNION);
+                if (strPtr != null) {
+                    String val = strPtr.getString(0);
+                    if (val != null) {
+                        map.put(key, val);
+                    }
+                }
             }
         }
         this.metadata = Collections.unmodifiableMap(map);
     }
 
-    private volatile boolean readyFired;
+    // ── Track lifecycle callbacks ───────────────────────────────────────────
 
     private void notifyReady() {
         if (!readyFired && duration > 0) {
             readyFired = true;
-            changingTrack = false;  // new track confirmed playing, clear the flag
+            changingTrack = false;
             System.err.println("[mpv] Firing onMediaReady, duration=" + duration);
             javafx.application.Platform.runLater(() -> callback.onMediaReady(duration));
         }
     }
 
-    private void handleEndFile() {
+    /** Called when mpv sends the end-file event. */
+    private void handleEndFile(Pointer evPtr) {
+        Pointer dataPtr = evPtr.getPointer(MpvNative.OFF_EVENT_DATA);
+        if (dataPtr == null) return;
+        int reason = dataPtr.getInt(MpvNative.OFF_END_REASON);
+        int error  = dataPtr.getInt(MpvNative.OFF_END_ERROR);
+        System.err.println("[mpv] end-file event reason=" + reason + " error=" + error);
+
+        // EOF and ERROR are the cases that mean "track actually ended"
+        if (reason != MpvNative.MPV_END_FILE_REASON_EOF
+                && reason != MpvNative.MPV_END_FILE_REASON_ERROR) {
+            return; // stop / quit / redirect — handled elsewhere or irrelevant
+        }
+        handleEof();
+    }
+
+    /** Common end-of-track handling (used by both eof-reached property and end-file event). */
+    private void handleEof() {
         eof = true;
         readyFired = false;
-        // If we programmed a track change ourselves (loadfile/stop),
-        // the end-file is from the OLD track being evicted — ignore it.
-        if (changingTrack) {
-            return;
-        }
+        System.err.println("[mpv] handleEof changingTrack=" + changingTrack);
+        if (changingTrack) return;
+
         javafx.application.Platform.runLater(() -> {
             if (callback.getRepeatState() != RepeatState.REPEAT_ONE) {
                 callback.onNextTrack();
@@ -439,19 +373,15 @@ public class Player implements AutoCloseable {
         });
     }
 
+    // ── Cleanup ─────────────────────────────────────────────────────────────
+
     @Override
     public void close() {
+        System.err.println("[mpv] Shutting down...");
+        running.set(false);
+        MpvNative.INSTANCE.mpv_terminate_destroy(handle);
         executor.shutdownNow();
-        try {
-            if (mpvProcess != null && mpvProcess.isAlive()) {
-                sendRaw("{\"command\":[\"quit\"]}\n");
-                mpvProcess.waitFor(2, TimeUnit.SECONDS);
-                mpvProcess.destroyForcibly();
-            }
-        } catch (InterruptedException e) {
-            if (mpvProcess != null) mpvProcess.destroyForcibly();
-        }
-        try { if (socket != null) socket.close(); } catch (IOException ignored) {}
-        try { Files.deleteIfExists(socketPath); } catch (IOException ignored) {}
+        try { executor.awaitTermination(1, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+        System.err.println("[mpv] Shutdown complete");
     }
 }
