@@ -86,7 +86,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sonar-linux
-          path: target/sonar-*-linux.tar.gz
+          path: |
+            target/sonar-${{ needs.version.outputs.version }}-linux.tar.gz
           if-no-files-found: error
 
   windows:
@@ -148,7 +149,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sonar-windows
-          path: target/sonar-*-windows-x64.zip
+          path: |
+            target/sonar-${{ needs.version.outputs.version }}-windows-x64.zip
           if-no-files-found: error
 
   release:
