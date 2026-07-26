@@ -294,11 +294,20 @@ Write-Host ("    staged ffmpeg ({0:N1} MB)" -f ($ffSize / 1MB))
 # Read coordinates from the POM so they cannot drift from the module path.
 function Get-PomProperty {
     param([string]$Name)
-    $lines = @(& .\mvnw.cmd -q help:evaluate "-Dexpression=$Name" -DforceStdout) |
-             Where-Object { $_ -and "$_".Trim() }
-    $v = if ($lines) { "$($lines[-1])".Trim() } else { '' }
+    $raw = & .\mvnw.cmd -q help:evaluate "-Dexpression=$Name" -DforceStdout
+    if ($LASTEXITCODE -ne 0) { throw "help:evaluate failed for '$Name' with exit code $LASTEXITCODE" }
+
+    # $raw is an array of lines when mvnw prints more than one, but collapses
+    # to a bare scalar string when it prints exactly one -- which is the
+    # normal case here. Select-Object -Last 1 handles both shapes uniformly.
+    # Do NOT index with $raw[-1]: PowerShell also allows [-1] on a plain
+    # string, silently returning its last CHARACTER instead of erroring, which
+    # is exactly what previously turned "27-ea+25" into "5", "5.14.0" into
+    # "0", and "win" into "n".
+    $last = $raw | Where-Object { $_ -and "$_".Trim() } | Select-Object -Last 1
+    $v = "$last".Trim()
     if (-not $v -or $v -eq 'null object or invalid expression') {
-        throw "Could not read '$Name' from pom.xml"
+        throw "Could not read '$Name' from pom.xml (raw output: '$raw')"
     }
     return $v
 }
