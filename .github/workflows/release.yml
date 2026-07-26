@@ -121,18 +121,9 @@ jobs:
           & target\sonar-jlink\bin\java.exe -version
           $mods = & target\sonar-jlink\bin\java.exe --list-modules
           Write-Host '--- jlink module list ---'
+          $mods = & target\sonar-jlink\bin\java.exe --list-modules
           $mods
-          if ($mods -notmatch 'folltrace\.sonar') {
-            Write-Host "--- module-info.class exists? ---"
-            Test-Path 'target\classes\module-info.class'
-            Write-Host '--- top-level files under target/classes ---'
-            Get-ChildItem target\classes -Recurse -File -Name | Select-Object -First 40
-            Write-Host '---' 
-            Get-ChildItem target\genmods -Recurse -File -Name | Select-Object -First 20
-            Write-Host '--- jlink output image contents ---'
-            Get-ChildItem target\sonar-jlink\lib -Recurse -File -Name | Select-Object -First 30
-            throw 'folltrace.sonar not linked into runtime'
-          }
+          if ($mods -notmatch 'folltrace\.sonar') { throw 'folltrace.sonar not linked into runtime' }
           foreach ($p in 'target\jpackage\Sonar\Sonar.exe',
                          'target\jpackage\Sonar\app\libmpv-2.dll',
                          'target\jpackage\Sonar\app\ffmpeg\ffmpeg.exe',
