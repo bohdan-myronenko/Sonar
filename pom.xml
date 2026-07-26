@@ -13,6 +13,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>27-ea+25</javafx.version>
+        <jna.version>5.14.0</jna.version>
+        <!-- OpenJFX native classifier. Overridden by the profiles below; the
+             default keeps plain `mvn` on Linux behaving as it always has. -->
+        <javafx.platform>linux</javafx.platform>
     </properties>
 
     <dependencies>
@@ -20,11 +24,11 @@
         <dependency><groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId><version>${javafx.version}</version></dependency>
         <dependency><groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId><version>${javafx.version}</version></dependency>
         <dependency><groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId><version>${javafx.version}</version></dependency>
-        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
-        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
-        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
-        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId><version>${javafx.version}</version><classifier>linux</classifier></dependency>
-        <dependency><groupId>net.java.dev.jna</groupId><artifactId>jna</artifactId><version>5.14.0</version></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-base</artifactId><version>${javafx.version}</version><classifier>${javafx.platform}</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-controls</artifactId><version>${javafx.version}</version><classifier>${javafx.platform}</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-fxml</artifactId><version>${javafx.version}</version><classifier>${javafx.platform}</classifier></dependency>
+        <dependency><groupId>org.openjfx</groupId><artifactId>javafx-graphics</artifactId><version>${javafx.version}</version><classifier>${javafx.platform}</classifier></dependency>
+        <dependency><groupId>net.java.dev.jna</groupId><artifactId>jna</artifactId><version>${jna.version}</version></dependency>
     </dependencies>
 
     <build>
@@ -47,4 +51,19 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Selects the OpenJFX native classifier for the host OS. jlink and
+         jpackage cannot cross-compile, so a build always targets the machine
+         it runs on and auto-detection is exactly what we want. Linux and
+         Windows are the only supported targets; macOS is out of scope, not
+         least because MprisService and sonar_mpris_d are Linux-specific and
+         nothing has been written to replace them there.
+         Override with -Djavafx.platform=<linux|win> if you ever need to. -->
+    <profiles>
+        <profile>
+            <id>javafx-win</id>
+            <activation><os><family>windows</family></os></activation>
+            <properties><javafx.platform>win</javafx.platform></properties>
+        </profile>
+    </profiles>
 </project>

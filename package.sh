@@ -16,9 +16,26 @@ fi
 export JAVA_HOME
 JDK_BIN="${JAVA_HOME}/bin"
 
-VERSION="1.0"
-JFX="27-ea+25"
-JNA="5.14.0"
+# Overridable so CI can stamp the git tag onto the artifact.
+VERSION="${VERSION:-1.0}"
+
+# Read dependency coordinates from the POM instead of duplicating them here,
+# so a version bump in pom.xml can't silently break the module path below.
+pom_prop() {
+    local v
+    v="$(./mvnw -q help:evaluate -Dexpression="$1" -DforceStdout)"
+    if [ -z "$v" ] || [ "$v" = "null object or invalid expression" ]; then
+        echo "ERROR: could not read '$1' from pom.xml" >&2
+        exit 1
+    fi
+    printf '%s' "$v"
+}
+echo "=== Reading versions from pom.xml ==="
+JFX="$(pom_prop javafx.version)"
+JNA="$(pom_prop jna.version)"
+JFXPLAT="$(pom_prop javafx.platform)"
+echo "    javafx ${JFX} (${JFXPLAT}), jna ${JNA}, sonar ${VERSION}"
+
 OUTPUT="target/sonar-${VERSION}-linux.tar.gz"
 MODS="target/mods"
 GEN="target/genmods"
@@ -71,13 +88,20 @@ cp "$MODS/jna-${JNA}.jar" "$GEN/jna-${JNA}.jar"
 echo "=== Step 3: jlink ==="
 MP="$GEN/jna-${JNA}.jar"
 for m in base controls fxml graphics; do
-    MP="$MP:$MODS/javafx-${m}-${JFX}.jar:$MODS/javafx-${m}-${JFX}-linux.jar"
+    MP="$MP:$MODS/javafx-${m}-${JFX}.jar:$MODS/javafx-${m}-${JFX}-${JFXPLAT}.jar"
 done
 MP="$MP:target/classes"
 
+# --add-options bakes the flag into the image itself, so it applies however the
+# runtime is launched rather than only via the wrapper script.  JNA reaches
+# libmpv through System.load, which JEP 472 restricts from JDK 24 onward: the
+# flag suppresses the warning there and pre-empts the later switch to a hard
+# failure.  On JDK 21..23 the option is recognised but inert, so the image
+# builds and runs identically whichever JDK produced it.
 "${JDK_BIN}/jlink" --output "$JLINK" --module-path "$MP" \
       --add-modules java.base,java.desktop,java.logging,java.scripting,java.xml,java.datatransfer,jdk.unsupported,jdk.net,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,com.sun.jna,folltrace.sonar \
       --launcher "sonar=folltrace.sonar/folltrace.sonar.SonarMain" \
+      --add-options="--enable-native-access=com.sun.jna" \
       --strip-debug --no-header-files --no-man-pages --compress=zip-6 \
       --generate-cds-archive
 

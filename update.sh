@@ -9,7 +9,10 @@
 #   ./update.sh --uninstall  remove the per-user install
 set -euo pipefail
 
-VERSION="1.0"
+# Kept in sync with package.sh: exported so the child build stamps the same
+# version this script then looks for.
+VERSION="${VERSION:-1.0}"
+export VERSION
 TARBALL="target/sonar-${VERSION}-linux.tar.gz"
 EXTRACT_DIR="target/sonar-extract"
 

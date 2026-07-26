@@ -2,13 +2,17 @@ package folltrace.sonar;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;
+import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
 
 /**
  * JNA bindings for libmpv. Maps the subset of the mpv client API that Sonar uses.
  *
- * <p>Struct layouts (x86_64 Linux ABI):
+ * <p>Struct layouts below hold for both the x86-64 System V ABI (Linux) and
+ * Win64. Both are 64-bit little-endian with {@code int} = 4 bytes,
+ * pointers = 8 bytes and 8-byte alignment for pointers, so every offset is
+ * identical on the two platforms. Do not "fix" these for Windows.
  * <pre>
  *   mpv_event          = { event_id(i32,0), error(i32,4), reply_userdata(u64,8), data(ptr,16) }  // 24 B
  *   mpv_event_property = { name(ptr,0), format(i32,8), data(ptr,16) }                            // 24 B
@@ -20,7 +24,17 @@ import com.sun.jna.ptr.PointerByReference;
 @SuppressWarnings("unused")
 public interface MpvNative extends Library {
 
-    MpvNative INSTANCE = Native.load("mpv", MpvNative.class);
+    /**
+     * SONAME differs by platform. On Linux the library is {@code libmpv.so.2},
+     * which JNA finds from the plain name "mpv". The official Windows builds
+     * ship the file as {@code libmpv-2.dll}, which JNA would never derive from
+     * "mpv", so it has to be named explicitly.
+     *
+     * <p>On Windows the DLL is bundled with the application and located via the
+     * {@code jna.library.path} system property, which the packaged launcher
+     * points at the app directory.
+     */
+    MpvNative INSTANCE = Native.load(Platform.isWindows() ? "libmpv-2" : "mpv", MpvNative.class);
 
     // ── Formats (mpv_format) ────────────────────────────────────────────────
     int MPV_FORMAT_NONE   = 0;

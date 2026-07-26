@@ -946,7 +946,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private TrackInfo getTrackMetadata(File file) {
         try {
             var pb = new ProcessBuilder(
-                    "ffprobe", "-v", "quiet",
+                    MediaTools.ffprobe(), "-v", "quiet",
                     "-show_entries", "format=duration:format_tags=title,artist",
                     "-of", "csv=p=0",
                     file.getAbsolutePath());
@@ -984,7 +984,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         // Use ffprobe for accurate duration on any format
         try {
             var pb = new ProcessBuilder(
-                    "ffprobe", "-v", "quiet",
+                    MediaTools.ffprobe(), "-v", "quiet",
                     "-show_entries", "format=duration",
                     "-of", "csv=p=0",
                     file.getAbsolutePath());
@@ -1019,7 +1019,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         try {
             Path tmpCover = Files.createTempFile("sonar_ffcover_", ".jpg");
             var pb = new ProcessBuilder(
-                    "ffmpeg", "-y", "-i", audioFile.getAbsolutePath(),
+                    MediaTools.ffmpeg(), "-y", "-i", audioFile.getAbsolutePath(),
                     "-an", "-vcodec", "copy", "-f", "image2",
                     tmpCover.toAbsolutePath().toString());
             pb.redirectError(ProcessBuilder.Redirect.DISCARD);

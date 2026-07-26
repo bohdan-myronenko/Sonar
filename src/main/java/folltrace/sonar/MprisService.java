@@ -25,6 +25,11 @@ import java.util.concurrent.TimeUnit;
  * IPC between Java and the daemon uses a Unix-domain socket.
  * Java side sends SIGNAL commands (pipe-delimited state updates) and
  * receives CALL commands (method invocations from D-Bus clients).
+ *
+ * <p>MPRIS is a freedesktop.org D-Bus specification, so this is Linux-only.
+ * On other platforms {@link #start()} is a no-op and every other method
+ * short-circuits, leaving the player fully functional without desktop
+ * media integration.
  */
 public final class MprisService {
 
@@ -40,6 +45,13 @@ public final class MprisService {
 
     public synchronized void start() {
         if (running) return;
+        // MPRIS needs a D-Bus session bus and the sonar_mpris_d helper, neither
+        // of which exists off Linux. Bail out explicitly rather than relying on
+        // locateOrExtractHelper() to throw, which would also try to invoke gcc.
+        if (!com.sun.jna.Platform.isLinux()) {
+            System.err.println("[Sonar] MPRIS is Linux-only; desktop media controls disabled");
+            return;
+        }
         try {
             String helperPath = locateOrExtractHelper();
 
