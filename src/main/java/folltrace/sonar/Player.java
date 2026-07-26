@@ -66,7 +66,12 @@ public class Player implements AutoCloseable {
         m.mpv_set_option_string(handle, "audio-display", "no");
         m.mpv_set_option_string(handle, "volume", "100");
         m.mpv_set_option_string(handle, "volume-max", "100");
-        m.mpv_set_option_string(handle, "terminal", "no");
+        if (com.sun.jna.Platform.isWindows()) {
+            m.mpv_set_option_string(handle, "terminal", "yes");
+            m.mpv_set_option_string(handle, "msg-level", "all=status");
+        } else {
+            m.mpv_set_option_string(handle, "terminal", "no");
+        }
 
         int rc = m.mpv_initialize(handle);
         if (rc < 0) {
