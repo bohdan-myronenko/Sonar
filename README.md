@@ -107,6 +107,12 @@ Build prerequisites:
 
 Neither platform needs libmpv installed at build time. Sonar binds to it through JNA at runtime, so there are no headers to include and nothing to link against.
 
+> **`.mvn/jvm.config` must stay portable across JDKs.** Every token in that file is passed verbatim to the Maven JVM (it does not support comments), and an option the running JDK doesn't recognize aborts the JVM before Maven starts. So it may only contain flags valid on every JDK used to build the project, currently 21 through 26. Version-specific flags belong in `MAVEN_OPTS` on the machine that needs them. For example, JDK 26 warns that Maven's own Sisu/Plexus internals mutate a final field reflectively; to silence that locally without breaking CI:
+>
+> ```bash
+> export MAVEN_OPTS="--enable-final-field-mutation=ALL-UNNAMED"
+> ```
+
 **Per-user install (no root).** `update.sh` builds the package and installs it under `$HOME` using XDG locations:
 
 ```bash
