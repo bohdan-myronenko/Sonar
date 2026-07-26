@@ -119,11 +119,10 @@ jobs:
         shell: pwsh
         run: |
           & target\sonar-jlink\bin\java.exe -version
-          $mods = & target\sonar-jlink\bin\java.exe --list-modules
           Write-Host '--- jlink module list ---'
           $mods = & target\sonar-jlink\bin\java.exe --list-modules
           $mods
-          if ($mods -notmatch 'folltrace\.sonar') { throw 'folltrace.sonar not linked into runtime' }
+          if (($mods -join "`n") -notmatch 'folltrace\.sonar') { throw 'folltrace.sonar not linked into runtime' }
           foreach ($p in 'target\jpackage\Sonar\Sonar.exe',
                          'target\jpackage\Sonar\app\libmpv-2.dll',
                          'target\jpackage\Sonar\app\ffmpeg\ffmpeg.exe',
