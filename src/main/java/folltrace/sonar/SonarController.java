@@ -113,7 +113,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     private volatile boolean isPlaying;  // tracked so MPRIS reads correct state immediately
     private long lastMprisPositionSync;   // throttle position updates to D-Bus
 
-    /** Cached fallback album art image — loaded once and reused. */
+    /** Cached fallback album art image (loaded once and reused) */
     private final Image defaultAlbumArt = new Image(
             Objects.requireNonNull(getClass().getResourceAsStream("/no_track_img.png")));
 
@@ -253,7 +253,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         volumeLabel.setText(pct + "%");
         updateVolumeIcon(pct);
 
-        // Dark theme — deferred until scene is available
+        // Dark theme deferred until scene is available
         pendingDarkTheme = s.getDarkTheme();
     }
 
@@ -772,7 +772,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         if (minimisedCheck.isSelected()) {
             try { handleShrink(); } catch (IOException e) { e.printStackTrace(); }
         } else {
-            // Restore full mode — close the mini stage if it exists
+            // Restore full mode: close the mini stage if it exists
             if (miniController != null) {
                 miniController.closeMiniStage();
             }
@@ -1033,7 +1033,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
             }
             Files.deleteIfExists(tmpCover);
         } catch (Exception e) {
-            // ffmpeg not available or extraction failed — silently return null
+            // ffmpeg not available or extraction failed: silently return null
         }
         return null;
     }
@@ -1348,7 +1348,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     /**
-     * Notify MPRIS after a short delay — used after seek operations,
+     * Notify MPRIS after a short delay, used after seek operations,
      * because MediaPlayer.seek() is asynchronous and an immediate
      * notification would report the stale pre-seek position.
      */

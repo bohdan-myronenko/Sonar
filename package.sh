@@ -28,6 +28,9 @@ JLINK="target/sonar-jlink"
 # Must run BEFORE mvnw clean (which wipes target/),
 # or save the binary outside target/.  We use a temp location.
 echo "=== Step 0: Build MPRIS C daemon ==="
+# target/ may not exist yet on a clean checkout, and this step runs before
+# Maven would create it.
+mkdir -p target
 DBUS_CFLAGS="-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include -ldbus-1"
 # Try pkg-config first if available
 if command -v pkg-config >/dev/null 2>&1; then
@@ -83,6 +86,7 @@ echo "=== Step 4: Assemble package ==="
 PKG="target/package/sonar-${VERSION}"
 rm -rf "$PKG"
 mkdir -p "$PKG"/{runtime,share/applications,share/icons/hicolor/256x256/apps,share/doc/sonar,share/dbus-1/services}
+mkdir -p "$PKG/share/doc/sonar/licenses"/{openjfx,jna}
 cp -r "$JLINK"/* "$PKG/runtime/"
 chmod 755 "$PKG/runtime/bin/"*
 
@@ -168,10 +172,50 @@ printf "Sonar uninstalled.\n"
 UNINSTALL
 chmod 755 "$PKG/uninstall.sh"
 
+# ── License notices ───────────────────────────────────────────────
+# The OpenJDK runtime's own notices already arrive via runtime/legal/
+# (copied wholesale from the jlink image above).  Three things are NOT
+# covered by that and must be added by hand:
+#   1. Sonar's own BSD-3 notice, which clause 2 requires to accompany
+#      binary redistribution.
+#   2. OpenJFX, whose jars carry no license entries at all.
+#   3. JNA, whose notices live in META-INF/ and are discarded by jlink.
+echo "=== Step 4b: License notices ==="
+LIC="$PKG/share/doc/sonar/licenses"
+
+cp LICENSE "$LIC/LICENSE"
+
+# OpenJFX is GPLv2 with the Classpath Exception, the same terms as the
+# bundled OpenJDK runtime, so reuse that text rather than vendoring a
+# second copy or fetching one at build time.
+cp "$JLINK/legal/java.base/LICENSE"                 "$LIC/openjfx/LICENSE"
+cp "$JLINK/legal/java.base/ADDITIONAL_LICENSE_INFO" "$LIC/openjfx/ADDITIONAL_LICENSE_INFO"
+cat > "$LIC/openjfx/NOTICE" << EOF
+OpenJFX ${JFX}
+
+The javafx.base, javafx.controls, javafx.fxml and javafx.graphics modules
+linked into runtime/ are licensed under the GNU General Public License,
+version 2, with the Classpath Exception.  The GPLv2 text is in LICENSE
+and the Classpath Exception clarification is in ADDITIONAL_LICENSE_INFO,
+both in this directory.
+
+Source: https://github.com/openjdk/jfx
+EOF
+
+# JNA is dual-licensed; both texts ship inside the jar's META-INF.
+JNA_JAR_ABS="$(pwd)/$MODS/jna-${JNA}.jar"
+(
+  cd "$LIC/jna"
+  "${JDK_BIN}/jar" --extract --file="$JNA_JAR_ABS" \
+      META-INF/LICENSE META-INF/AL2.0 META-INF/LGPL2.1
+  mv META-INF/LICENSE META-INF/AL2.0 META-INF/LGPL2.1 .
+  rm -rf META-INF
+)
+
 # ── README ─────────────────────────────────────────────────────────
 cat > "$PKG/share/doc/sonar/README" << EOF
-Sonar ${VERSION} — Self-contained music player (MPRIS-capable).
-No Java required.
+Sonar ${VERSION}, a music player with MPRIS v2 support.
+Bundles its own Java runtime, so no JRE installation is needed.
 
 Install:   sudo ./install.sh
 Run:       sonar
@@ -183,6 +227,15 @@ MPRIS:
     playerctl -p sonar play-pause
     playerctl -p sonar next
     playerctl -p sonar previous
+
+Requires libmpv on the system (install mpv or libmpv).
+ffmpeg is optional and used only for album art extraction.
+
+Licensing:
+  Sonar is BSD-3-Clause; see licenses/LICENSE.
+  Bundled OpenJFX and the OpenJDK runtime are GPLv2 with the
+  Classpath Exception; see licenses/openjfx/ and runtime/legal/.
+  Bundled JNA is Apache-2.0 or LGPL-2.1+; see licenses/jna/.
 EOF
 
 # ── Step 5: Create tarball ────────────────────────────────────────

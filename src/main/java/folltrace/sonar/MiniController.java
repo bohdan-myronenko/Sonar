@@ -67,14 +67,14 @@ public class MiniController {
             miniStage.setY(event.getScreenY() - dragOffsetY);
         });
 
-        // Seek via mini slider — drag release
+        // Seek via mini slider drag release
         miniSeekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
             if (!isChanging) {
                 sonarController.updateMediaPlayerTime(miniSeekSlider.getValue());
             }
         });
 
-        // Seek via mini slider — click on track (not during a drag)
+        // Seek via mini slider: click on track (not during a drag)
         miniSeekSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (!miniSeekSlider.isValueChanging()) {
                 var p = sonarController.getPlayer();
@@ -122,18 +122,18 @@ public class MiniController {
         var p = sonarController.getPlayer();
         if (p == null || p.getDuration() <= 0) return;
 
-        // Track info — use main controller's already-resolved labels
+        // Track info: use main controller's already-resolved labels
         songLabel.setText(sonarController.getTrackTitle());
-                artistLabel.setText(sonarController.getTrackArtist());
-                albumLabel.setText(sonarController.getTrackAlbum());
+        artistLabel.setText(sonarController.getTrackArtist());
+        albumLabel.setText(sonarController.getTrackAlbum());
 
-                // Start marquee on song label if text overflows
-                SonarController.cancelLabelMarquee(songLabel);
-                Platform.runLater(() -> {
-                    if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
-                        SonarController.startLabelMarquee(songLabel, songLabel.getText());
-                    }
-                });
+        // Start marquee on song label if text overflows
+        SonarController.cancelLabelMarquee(songLabel);
+        Platform.runLater(() -> {
+            if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
+                SonarController.startLabelMarquee(songLabel, songLabel.getText());
+            }
+        });
 
         // Seek slider
         double duration = p.getDuration();
@@ -149,7 +149,7 @@ public class MiniController {
         // Current time
         updateCurrentTimeDisplay(p.getPosition());
 
-        // Album art — always sync to match the main window
+        // Album art: always sync to match the main window
         var mainArt = sonarController.getAlbumCoverImageView();
         if (mainArt != null) {
             miniAlbumArt.setImage(mainArt.getImage());

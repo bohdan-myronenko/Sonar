@@ -1,6 +1,6 @@
 /* ===== Dark theme for Sonar =====
    Only overrides COLOUR properties; never touches sizing, padding,
-   or font sizes — those come from modena.css and stay constant.  */
+   or font sizes -- those come from modena.css and stay constant.  */
 
 .root {
     -fx-background-color: #2b2b2b;
@@ -13,7 +13,7 @@
     -fx-fill: #ddd;
 }
 
-/* ── Player buttons (toolbar) — keep modena's glassy 4‑layer look ── */
+/* ── Player buttons (toolbar) keep modena's glassy 4‑layer look ── */
 
 .player-button {
     -fx-background-color:

@@ -66,9 +66,9 @@ public interface MpvNative extends Library {
     /** mpv_event_end_file.error */
     int OFF_END_ERROR           = 4;
 
-    /** mpv_node.format (at offset 8 — after the 8-byte union) */
+    /** mpv_node.format (at offset 8 after the 8-byte union) */
     int OFF_NODE_FORMAT         = 8;
-    /** mpv_node union (flag/int64/double/string/list — at offset 0) */
+    /** mpv_node union (flag/int64/double/string/list at offset 0) */
     int OFF_NODE_UNION          = 0;
 
     /** mpv_node_list.num */

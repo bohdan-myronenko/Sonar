@@ -240,7 +240,7 @@ public final class MprisService {
             else if (c == '|')  sb.append("\\|");
             else if (c == '\n' || c == '\r') sb.append(' ');
             else if (c >= 0x20 || c == '\t') sb.append(c);
-            // else: drop control chars — ID3 tags are NUL-padded and
+            // else: drop control chars: ID3 tags are NUL-padded and
             // embedded \u0000 broke both the line protocol (C strchr
             // stops at NUL) and D-Bus strings (NUL is illegal in them).
         }

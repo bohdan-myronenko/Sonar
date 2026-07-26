@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg"
      width="1200" height="380" viewBox="0 0 1200 380"
      role="img" aria-labelledby="title desc">
-  <title id="title">Sonar — self-contained Linux music player</title>
-  <desc id="desc">A modern desktop music player with MPRIS integration, built on JavaFX and libmpv. Ships with its own runtime — no Java install needed.</desc>
+  <title id="title">Sonar, a Linux music player</title>
+  <desc id="desc">A desktop music player with MPRIS integration, built on JavaFX and libmpv. Ships with its own Java runtime.</desc>
 
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="380" gradientUnits="userSpaceOnUse">

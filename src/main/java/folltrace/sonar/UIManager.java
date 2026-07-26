@@ -15,7 +15,7 @@ public final class UIManager {
     private static final String DARK_CSS = Objects.requireNonNull(
             UIManager.class.getResource("/dark.css")).toExternalForm();
 
-    /** Effect that turns black silhouettes white — applied to button icons in dark mode. */
+    /** Effect that turns black silhouettes white: applied to button icons in dark mode. */
     private static final ColorAdjust INVERT_EFFECT = new ColorAdjust();
     static { INVERT_EFFECT.setBrightness(1.0); }
 
