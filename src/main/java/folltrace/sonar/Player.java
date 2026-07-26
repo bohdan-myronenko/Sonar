@@ -25,7 +25,7 @@ public class Player implements AutoCloseable {
     // Cached state updated by the event thread
     private volatile double position;       // seconds
     private volatile double duration;       // seconds
-    private volatile double volume = 1.0;   // 0.0–1.0
+    private volatile double volume = 1.0;   // 0.0-1.0
     private volatile double speed = 1.0;    // playback rate
     private volatile boolean paused;
     private volatile boolean eof;
@@ -88,7 +88,6 @@ public class Player implements AutoCloseable {
         observeProperty(OBS_METADATA,    "metadata",    MpvNative.MPV_FORMAT_NODE);
         observeProperty(OBS_PATH,        "path",        MpvNative.MPV_FORMAT_STRING);
 
-        // Start the event loop
         executor.submit(this::eventLoop);
 
         System.err.println("[mpv] Player ready (libmpv)");
@@ -137,7 +136,7 @@ public class Player implements AutoCloseable {
         sendCommand("seek", String.valueOf(pendingSeekTarget), "absolute");
     }
 
-    /** Set volume (0.0 – 1.0). mpv uses 0–100 internally. */
+    /** Set volume (0.0 to 1.0). mpv uses 0-100 internally. */
     public void setVolume(double v) {
         volume = Math.min(1.0, Math.max(0.0, v));
         MpvNative.INSTANCE.mpv_set_property_string(handle, "volume",
@@ -200,7 +199,6 @@ public class Player implements AutoCloseable {
             int eventId = evPtr.getInt(MpvNative.OFF_EVENT_ID);
             switch (eventId) {
                 case MpvNative.MPV_EVENT_NONE:
-                    // timeout — nothing to do
                     break;
 
                 case MpvNative.MPV_EVENT_SHUTDOWN:
@@ -221,7 +219,7 @@ public class Player implements AutoCloseable {
                     break;
 
                 default:
-                    // log_message, seek, playback-restart, etc. — ignored
+                    // log_message, seek, playback-restart, etc. are ignored
                     break;
             }
         }
@@ -273,7 +271,7 @@ public class Player implements AutoCloseable {
         } else if (userdata == OBS_METADATA && format == MpvNative.MPV_FORMAT_NODE) {
             parseMetadataNode(propPtr.getPointer(MpvNative.OFF_PROP_DATA));
         } else if (userdata == OBS_PATH && format == MpvNative.MPV_FORMAT_STRING) {
-            // For MPV_FORMAT_STRING, prop.data is char** — dereference to get the actual char*
+            // For MPV_FORMAT_STRING, prop.data is char**; dereference to get the actual char*
             Pointer dataField = propPtr.getPointer(MpvNative.OFF_PROP_DATA);
             if (dataField != null) {
                 Pointer strPtr = dataField.getPointer(0);
@@ -293,8 +291,8 @@ public class Player implements AutoCloseable {
      * Parse an {@code mpv_node} of type {@code MPV_FORMAT_NODE_MAP}
      * containing string key/value pairs and store them in {@link #metadata}.
      * <p>
-     * Node layout: {@code { u(8B union, off 0), format(i32, off 8) }} — 16 bytes.
-     * Node-list layout: {@code { num(i32,0) [pad4] values(ptr,8) keys(ptr,16) }} — 24 bytes.
+     * Node layout: {@code { u(8B union, off 0), format(i32, off 8) }}, 16 bytes total.
+     * Node-list layout: {@code { num(i32,0) [pad4] values(ptr,8) keys(ptr,16) }}, 24 bytes total.
      */
     private void parseMetadataNode(Pointer nodePtr) {
         if (nodePtr == null) return;
@@ -312,13 +310,13 @@ public class Player implements AutoCloseable {
 
         var map = new HashMap<String, String>(num);
         for (int i = 0; i < num; i++) {
-            // keys[i] — pointer to C string
+            // keys[i]: pointer to C string
             Pointer keyPtr = keysPtr.getPointer((long) i * Native.POINTER_SIZE);
             if (keyPtr == null) continue;
             String key = keyPtr.getString(0);
             if (key == null) continue;
 
-            // values[i] — pointer to mpv_node (16 bytes each)
+            // values[i]: pointer to mpv_node (16 bytes each)
             Pointer valNodePtr = valuesPtr.share((long) i * 16);
             int valFmt = valNodePtr.getInt(MpvNative.OFF_NODE_FORMAT);
             if (valFmt == MpvNative.MPV_FORMAT_STRING) {
@@ -356,7 +354,7 @@ public class Player implements AutoCloseable {
         // EOF and ERROR are the cases that mean "track actually ended"
         if (reason != MpvNative.MPV_END_FILE_REASON_EOF
                 && reason != MpvNative.MPV_END_FILE_REASON_ERROR) {
-            return; // stop / quit / redirect — handled elsewhere or irrelevant
+            return; // stop / quit / redirect: handled elsewhere or irrelevant
         }
         handleEof();
     }

@@ -50,7 +50,6 @@ public class MiniController {
             }
             int percent = (int) Math.round(newVal.doubleValue() * 100);
             volumeLabel.setText(percent + "%");
-            // Propagate to main window
             sonarController.onVolumeChanged(percent);
         });
 
@@ -127,7 +126,6 @@ public class MiniController {
         artistLabel.setText(sonarController.getTrackArtist());
         albumLabel.setText(sonarController.getTrackAlbum());
 
-        // Start marquee on song label if text overflows
         SonarController.cancelLabelMarquee(songLabel);
         Platform.runLater(() -> {
             if (SonarController.textExceedsLabel(songLabel, songLabel.getText())) {
@@ -135,18 +133,15 @@ public class MiniController {
             }
         });
 
-        // Seek slider
         double duration = p.getDuration();
         if (duration > 0) {
             miniSeekSlider.setMax(duration);
             miniSeekSlider.setValue(p.getPosition());
         }
 
-        // Volume
         miniVolumeSlider.setValue(p.getVolume());
         volumeLabel.setText((int) Math.round(p.getVolume() * 100) + "%");
 
-        // Current time
         updateCurrentTimeDisplay(p.getPosition());
 
         // Album art: always sync to match the main window
@@ -157,10 +152,8 @@ public class MiniController {
             miniAlbumArt.setImage(null);
         }
 
-        // Play/pause button state
         updatePlayPauseButton(p.isPlaying());
 
-        // Repeat / Shuffle state
         updateRepeatIcon(sonarController.getRepeatState());
         updateShuffleIcon(sonarController.getShuffleState());
     }
@@ -247,7 +240,6 @@ public class MiniController {
 
     @FXML
     private void handleClose() {
-        // Close mini and restore main window
         sonarController.showMainWindow();
         if (miniStage == null) {
             miniStage = (Stage) songLabel.getScene().getWindow();

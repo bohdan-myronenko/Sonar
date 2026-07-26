@@ -1,5 +1,5 @@
 /*
- * sonar_mpris_d — MPRIS v2 D-Bus daemon for Sonar music player.
+ * sonar_mpris_d: MPRIS v2 D-Bus daemon for Sonar music player.
  *
  * This lightweight C daemon holds a D-Bus session connection in a process
  * completely separate from the JVM.  JavaFX MediaPlayer's GStreamer backend
@@ -145,7 +145,7 @@ static void send_to_java(const char *msg) {
         if (written < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                /* Socket buffer full — wait for writability, then retry */
+                /* Socket buffer full: wait for writability, then retry */
                 fd_set wfds;
                 FD_ZERO(&wfds);
                 FD_SET(sock_fd, &wfds);
@@ -324,14 +324,14 @@ static void handle_properties_get(DBusMessage *msg, const char *iface,
         } else if (!strcmp(prop, "Metadata")) {
             send_metadata_reply(msg);
         } else {
-            /* Unknown property — still MUST reply or callers time out */
+            /* Unknown property: still MUST reply or callers time out */
             const char *v = "";
             send_reply_variant(msg, DBUS_TYPE_STRING, &v);
         }
         return;
     }
 
-    /* Unknown property — return empty string */
+    /* Unknown property: return empty string */
     {
         const char *v = "";
         send_reply_variant(msg, DBUS_TYPE_STRING, &v);
@@ -341,7 +341,6 @@ static void handle_properties_get(DBusMessage *msg, const char *iface,
 /* ──────────────────────────────────────────────
  *  Properties.GetAll
  * ────────────────────────────────────────────── */
-/* Helper to append a {sv} entry for a boolean */
 static void append_dict_bool(DBusMessageIter *dict, const char *key, int val) {
     DBusMessageIter entry, var;
     dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
@@ -353,7 +352,6 @@ static void append_dict_bool(DBusMessageIter *dict, const char *key, int val) {
     dbus_message_iter_close_container(dict, &entry);
 }
 
-/* Helper to append a {sv} entry for a string */
 static void append_dict_str(DBusMessageIter *dict, const char *key,
                              const char *val) {
     DBusMessageIter entry, var;
@@ -366,7 +364,6 @@ static void append_dict_str(DBusMessageIter *dict, const char *key,
     dbus_message_iter_close_container(dict, &entry);
 }
 
-/* Helper to append a {sv} entry for a double */
 static void append_dict_double(DBusMessageIter *dict, const char *key,
                                 double val) {
     DBusMessageIter entry, var;
@@ -379,7 +376,6 @@ static void append_dict_double(DBusMessageIter *dict, const char *key,
     dbus_message_iter_close_container(dict, &entry);
 }
 
-/* Helper to append a {sv} entry for an int64 */
 static void append_dict_int64(DBusMessageIter *dict, const char *key,
                                dbus_int64_t val) {
     DBusMessageIter entry, var;
@@ -392,7 +388,6 @@ static void append_dict_int64(DBusMessageIter *dict, const char *key,
     dbus_message_iter_close_container(dict, &entry);
 }
 
-/* Helper to append a {sv} entry for an array of strings */
 static void append_dict_str_array(DBusMessageIter *dict, const char *key,
                                    const char **vals, int count) {
     DBusMessageIter entry, var, arr;
@@ -786,7 +781,7 @@ static void emit_properties_changed(void) {
     append_dict_str(&args, "LoopStatus", state.loop_status);
     append_dict_double(&args, "Rate", state.rate);
     append_dict_double(&args, "Volume", state.volume);
-    /* NOTE: Position is deliberately NOT included — per MPRIS spec it
+    /* NOTE: Position is deliberately NOT included. Per MPRIS spec it
      * does not emit change notifications; clients extrapolate it and
      * rely on the Seeked signal for jumps.  Broadcasting it every few
      * seconds made client sliders snap back. */
@@ -821,12 +816,12 @@ static void emit_properties_changed(void) {
  *
  * Pipe and backslash are escaped: \| and \\ in data.
  * CanPlay/Pause/Seek/GoNext/GoPrevious/Control are NOT
- * updated from SIGNALs — the C daemon always reports them as
+ * updated from SIGNALs; the C daemon always reports them as
  * true (the player supports all features).
  */
 static int parse_signal(char *payload) {
     /*
-     * Split on unescaped '|' — must preserve EMPTY fields and must NOT
+     * Split on unescaped '|'; must preserve EMPTY fields and must NOT
      * split on escaped pipes (\|).  strtok_r() does neither: it collapses
      * consecutive delimiters (shifting every field after an empty one)
      * and splits on escaped pipes inside titles.  Manual scan instead.
@@ -858,7 +853,7 @@ static int parse_signal(char *payload) {
     }
 
     /* Detect seeks: if the new position differs from our extrapolation
-     * by more than 2 s, the user (or an MPRIS client) jumped — emit the
+     * by more than 2 s, the user (or an MPRIS client) jumped; emit the
      * Seeked signal, otherwise clients snap back to their own clock. */
     long long expected_us = current_position_us();
     long long new_pos_us  = atoll(fields[6]);
@@ -900,7 +895,7 @@ static int parse_signal(char *payload) {
  *  exactly ONE recv() so it can never block the event loop.  (The old
  *  version looped on a blocking recv(): after the first SIGNAL from
  *  Java it hung inside recv() forever, leaving the daemon deaf to all
- *  D-Bus traffic — method calls and Get/GetAll timed out, which is why
+ *  D-Bus traffic: method calls and Get/GetAll timed out, which is why
  *  desktop controls went dead as soon as playback started.)
  *
  *  A static accumulator carries partial lines across calls.
@@ -967,7 +962,6 @@ static int setup_dbus(void) {
         return -1;
     }
 
-    /* Request bus name */
     int ret = dbus_bus_request_name(conn, BUS_NAME,
         DBUS_NAME_FLAG_DO_NOT_QUEUE, &err);
     if (dbus_error_is_set(&err)) {
@@ -1015,7 +1009,7 @@ static void send_reply_variant(DBusMessage *msg, int type, const void *val) {
 static void cleanup(void) {
     if (conn) {
         /* conn is a shared session-bus connection obtained via dbus_bus_get().
-         * Shared connections MUST NOT be closed — just release our reference. */
+         * Shared connections MUST NOT be closed; just release our reference. */
         dbus_connection_unref(conn);
         conn = NULL;
     }
@@ -1035,7 +1029,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Ignore SIGPIPE */
     signal(SIGPIPE, SIG_IGN);
 
     /* Connect to the Unix socket that Java created */
@@ -1072,7 +1065,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Tell Java we're ready */
     send_to_java("READY\n");
 
     /* Emit initial PropertiesChanged for root interface so DEs discover us */
@@ -1110,7 +1102,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "[sonar_mpris_d] started, fd=%d\n", sock_fd);
 
     /* Main event loop: poll D-Bus and Java socket.
-     * The loop must NEVER block on the Java socket — D-Bus method calls
+     * The loop must NEVER block on the Java socket; D-Bus method calls
      * have to keep being answered while playback updates stream in. */
     while (1) {
         dbus_connection_read_write(conn, 0);

@@ -170,7 +170,7 @@
                         <Font size="15.0" />
                      </font></Button>
                   <Slider fx:id="seekSlider" minHeight="-Infinity" minWidth="-Infinity" prefHeight="14.0" prefWidth="524.0" />
-                  <Label fx:id="currentTimeLabel" alignment="CENTER" contentDisplay="CENTER" minHeight="-Infinity" minWidth="-Infinity" prefHeight="17.0" prefWidth="32.0" text="--:--" textAlignment="CENTER">
+                  <Label fx:id="currentTimeLabel" alignment="CENTER" contentDisplay="CENTER" minHeight="-Infinity" minWidth="-Infinity" prefHeight="17.0" prefWidth="36.0" text="--:--" textAlignment="CENTER" textOverrun="CLIP">
                      <font>
                         <Font name="Consolas" size="12.0" />
                      </font>
@@ -180,7 +180,7 @@
                         <Image url="@../../icons/vol_min.png" />
                      </image>
                   </ImageView>
-                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" minHeight="-Infinity" minWidth="-Infinity" prefHeight="14.0" prefWidth="96.0" value="0.5" />
+                  <Slider id="vol_slider" fx:id="volumeSlider" max="1.0" minHeight="-Infinity" minWidth="-Infinity" prefHeight="14.0" prefWidth="92.0" value="0.5" />
                   <Label fx:id="volumeLabel" text="0%" />
               </items>
             </ToolBar>

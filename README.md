@@ -11,7 +11,6 @@ Sonar is a desktop music player for Linux and Windows. It bundles its own Java r
 | Bundled Java runtime | ✅ | ✅ |
 | MPRIS / media keys / KDE Connect | ✅ | ❌ D-Bus is Linux-only |
 | Album art and playlist durations | ✅ system `ffmpeg` | ✅ bundled `ffmpeg` |
-| Code-signed binary | n/a | ✅ Authenticode |
 
 ---
 
@@ -90,9 +89,11 @@ The package bundles a Java runtime but links against two system libraries:
 
 ### Windows
 
-Unzip `sonar-1.0-windows-x64.zip` anywhere and run `Sonar.exe`. There is no installer, nothing is written to the registry, and nothing lands outside the folder except the settings file.
+Unzip `sonar-1.0-windows-x64.zip` anywhere and run `Sonar.exe` from the extracted `Sonar-1.0\` folder. There is no installer, nothing is written to the registry, and nothing lands outside the folder except the settings file (`%APPDATA%\sonar\`).
 
-Windows has no system libmpv and no system ffmpeg, so unlike the Linux package this one bundles both: `app\libmpv-2.dll` and `app\ffmpeg\`. Nothing else needs installing.
+Windows has no system Java, libmpv, or ffmpeg, so unlike the Linux package this one bundles all three: a full `jre\`, `app\native\libmpv-2.dll`, and `app\ffmpeg\`. Nothing else needs installing.
+
+If `Sonar.exe` doesn't start, run `Sonar-debug.bat` instead. It launches the same app through a console window so any startup error is visible.
 
 The one functional difference from Linux is that **there is no MPRIS**. MPRIS is a freedesktop.org D-Bus specification, so desktop media-key bindings and KDE Connect integration don't exist on Windows. Playback is unaffected.
 
@@ -100,10 +101,10 @@ The one functional difference from Linux is that **there is no MPRIS**. MPRIS is
 
 Build prerequisites:
 
-- JDK 21+ (a full JDK: `jlink` and, on Windows, `jpackage` are required). Sources target Java 21 via `maven.compiler.release`, but releases are built with JDK 25 LTS, since that is the JDK that gets linked into the shipped runtime.
+- JDK 21+ (a full JDK: `jlink` is required to build the Linux package). Sources target Java 21 via `maven.compiler.release`, but releases are built with JDK 25 LTS, since that is the JDK that gets linked into the shipped Linux runtime.
 - Maven, handled by the bundled `mvnw` wrapper
-- Linux only: `gcc` and `libdbus-1-dev`, for the MPRIS C daemon
-- Windows only: 7-Zip on `PATH`, to unpack the libmpv and ffmpeg downloads
+- Linux only (`package.sh`): `gcc` and `libdbus-1-dev`, for the MPRIS C daemon
+- Windows package (`package-win.sh`), built from Linux or macOS: `curl`, `unzip`, `tar`, `7z` (p7zip), `sha256sum`, `awk`, and `find` on `PATH`. No Windows machine, Wine, or PowerShell needed: the script downloads a stock Windows JRE and cross-builds `Sonar.exe` with a Linux build of `launch4j`.
 
 Neither platform needs libmpv installed at build time. Sonar binds to it through JNA at runtime, so there are no headers to include and nothing to link against.
 
@@ -147,53 +148,32 @@ Don't run `./package.sh` itself under `sudo`. Only `install.sh` needs root, and 
 
 Set `VERSION` to stamp a different version onto the artifact: `VERSION=1.1 ./package.sh`.
 
-**Windows.** From a PowerShell prompt in the project root:
+**Windows.** Built from Linux or macOS, no Windows machine, Wine, or VM required:
 
-```powershell
-.\package.ps1 -Version 1.0
+```bash
+VERSION=1.0 ./package-win.sh
 ```
 
-This produces `target\sonar-1.0-windows-x64.zip`. The script downloads pinned, SHA-256-verified LGPL builds of [libmpv](https://github.com/zhongfly/mpv-winbuild/releases) and [ffmpeg](https://github.com/BtbN/FFmpeg-Builds/releases), bundles them, then wraps the `jlink` runtime with `jpackage` to produce `Sonar.exe`. The build fails loudly if either checksum doesn't match.
+This produces `target/sonar-1.0-windows-x64.zip`. The script downloads a stock Adoptium Windows JRE, the `-win` classifier JavaFX jars, and pinned, SHA-256-verified LGPL builds of [libmpv](https://github.com/zhongfly/mpv-winbuild/releases) and [ffmpeg](https://github.com/BtbN/FFmpeg-Builds/releases), then wraps the app with a Linux build of [launch4j](https://launch4j.sourceforge.net/) to produce `Sonar.exe` in custom-classpath mode (JavaFX on the module path, everything else on the classpath). Downloads are cached under `.cache/`, so repeat builds are fast. The build fails loudly if a checksum doesn't match or the assembled package layout is incomplete.
 
-To move to newer dependencies, update the `Mpv*` or `Ffmpeg*` defaults at the top of the script as a set. Two things to know when re-pinning ffmpeg: BtbN prunes daily `autobuild-*` releases after roughly two weeks but keeps the month-end ones indefinitely, so **pin to a month-end tag** or the URL will 404 within a fortnight; and the LGPL *shared* asset is chosen over the static one because static `ffmpeg.exe` and `ffprobe.exe` are about 75 MB each.
+If `Sonar.exe` won't launch on a given machine, `Sonar-debug.bat` (shipped alongside it) runs the same app through `java.exe` in a console window, so the real error is visible instead of `javaw.exe`'s silent failure.
+
+To move to newer dependencies, update the `MPV_URL`/`MPV_SHA256`/`MPV_COMMIT` or `FFMPEG_URL`/`FFMPEG_SHA256` variables near the top of the script as a set. Two things to know when re-pinning ffmpeg: BtbN prunes daily `autobuild-*` releases after roughly two weeks but keeps the month-end ones indefinitely, so **pin to a month-end tag** or the URL will 404 within a fortnight; and the LGPL *shared* asset is chosen over the static one because static `ffmpeg.exe` and `ffprobe.exe` are about 75 MB each.
 
 ### Releases
 
-`.github/workflows/release.yml` builds both platforms on tag pushes matching `v*` and opens a draft GitHub release with both artifacts and a `SHA256SUMS` file. `jlink` and `jpackage` cannot cross-compile, so each platform is built on its own runner. The Linux job pins `ubuntu-22.04` deliberately: the runtime image and the MPRIS daemon link against the runner's glibc, so that choice sets the oldest distro the release supports.
+`.github/workflows/release.yml` builds both platforms on tag pushes matching `v*` and opens a draft GitHub release with both artifacts and a `SHA256SUMS` file. The Linux job pins `ubuntu-22.04` deliberately: the `jlink` runtime image and the MPRIS daemon link against the runner's glibc, so that choice sets the oldest distro the release supports. The Windows job runs on an ordinary Linux runner too: `package-win.sh` cross-builds the whole package (stock JRE + `launch4j`) without needing a Windows machine.
 
 Run the workflow manually (`workflow_dispatch`) to build both platforms and upload artifacts without creating a tag or release.
 
-Signing is optional and driven by repository secrets. When they are absent the build still succeeds and simply produces unsigned output, so forks and pull requests work unchanged.
+Neither platform's binary is code-signed. GPG-signing the `SHA256SUMS` file is optional and driven by repository secrets; when they are absent the build still succeeds and simply skips it, so forks and pull requests work unchanged.
 
 | Secret | Effect |
 |---|---|
-| `WINDOWS_SIGNING_PFX_BASE64` | Base64 of an Authenticode `.pfx`. Signs `Sonar.exe` with an RFC 3161 timestamp. |
-| `WINDOWS_SIGNING_PFX_PASSWORD` | Password for that `.pfx`. |
 | `GPG_PRIVATE_KEY` | ASCII-armored private key. Produces `SHA256SUMS.asc`. |
 | `GPG_PASSPHRASE` | Passphrase for that key. |
 
-Since June 2023 no public CA issues downloadable `.pfx` files for OV code signing; keys must live on hardware or in a cloud HSM. To exercise the signing path without a real certificate, generate a throwaway self-signed one (it will not satisfy SmartScreen):
-
-```bash
-openssl req -x509 -newkey rsa:3072 -noenc -keyout k.pem -out c.pem -days 1095 \
-  -subj "/CN=Sonar Test Signing" \
-  -addext "basicConstraints=critical,CA:FALSE" \
-  -addext "keyUsage=critical,digitalSignature" \
-  -addext "extendedKeyUsage=critical,codeSigning"
-
-# -keypbe/-certpbe/-macalg force the legacy PKCS#12 algorithms; OpenSSL 3
-# defaults to AES-256/PBKDF2, which Windows CryptoAPI can refuse to import.
-openssl pkcs12 -export -out sonar-signing.pfx -inkey k.pem -in c.pem \
-  -name "Sonar Test Signing" -passout pass:CHANGEME \
-  -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
-
-base64 -w0 sonar-signing.pfx    # paste into WINDOWS_SIGNING_PFX_BASE64
-rm k.pem c.pem                  # never commit these
-```
-
-Chain validation is intentionally non-fatal in `package.ps1`, so a self-signed certificate signs successfully and the build reports the resulting signature status rather than failing.
-
-Verifying a Linux release:
+Verifying a release (the same `SHA256SUMS` covers both platforms' artifacts):
 
 ```bash
 gpg --verify SHA256SUMS.asc SHA256SUMS
@@ -298,7 +278,7 @@ If both are installed, whichever of `~/.local/bin` and `/usr/local/bin` comes fi
 | Audio | libmpv via JNA |
 | Desktop integration | MPRIS v2 D-Bus spec |
 | IPC | Unix-domain sockets |
-| Packaging | `jlink` plus a shell launcher (Linux), `jlink` + `jpackage` (Windows) |
+| Packaging | `jlink` plus a shell launcher (Linux), stock JRE + `launch4j` (Windows) |
 | Build | Maven, GitHub Actions |
 
 ---
@@ -313,7 +293,7 @@ Third-party components in the distributed package:
 
 | Component | License | Distribution |
 |-----------|---------|--------------|
-| OpenJDK runtime (`jlink`) | GPLv2 with Classpath Exception | Bundled |
+| OpenJDK runtime | GPLv2 with Classpath Exception | Bundled (`jlink` image on Linux, stock Temurin JRE on Windows) |
 | OpenJFX | GPLv2 with Classpath Exception | Bundled |
 | JNA | Apache-2.0 or LGPL-2.1+ | Bundled |
 | libmpv | LGPL-2.1+ | System library on Linux; bundled on Windows |

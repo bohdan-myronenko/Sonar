@@ -69,7 +69,6 @@ public final class MprisService {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             helperProcess = pb.start();
 
-            // Accept connection from daemon (daemon connects as client)
             server.configureBlocking(true);
             socketChannel = server.accept();
             server.close();

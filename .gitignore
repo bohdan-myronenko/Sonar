@@ -39,3 +39,6 @@ build/
 
 ### Linux KDE ###
 .directory
+
+### Build ###
+.cache

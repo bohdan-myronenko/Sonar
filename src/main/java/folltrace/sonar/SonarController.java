@@ -216,7 +216,6 @@ public class SonarController implements PlayerCallback, MprisPlayer {
         setupDragAndDrop();
         setupSoundIconToggle();
 
-        // Restore saved settings
         restoreSettings();
 
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
@@ -342,7 +341,7 @@ public class SonarController implements PlayerCallback, MprisPlayer {
     }
 
     /** Lazily creates the libmpv Player on first use to avoid loading
-     *  libmpv/FFmpeg (~100–200 MB) at startup when no music is playing. */
+     *  libmpv/FFmpeg (~100-200 MB) at startup when no music is playing. */
     private Player getOrCreatePlayer() {
         if (player != null) return player;
         synchronized (this) {
@@ -857,10 +856,8 @@ public class SonarController implements PlayerCallback, MprisPlayer {
 
     /** Case-insensitive lookup in a string→string map. */
     private static String getMetaCI(Map<String, String> map, String key) {
-        // Try exact match first
         String v = map.get(key);
         if (v != null) return v;
-        // Try case-insensitive
         for (var entry : map.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(key)) {
                 return entry.getValue();
@@ -1069,7 +1066,6 @@ public class SonarController implements PlayerCallback, MprisPlayer {
                 String duration = (info != null && info.durationSecs >= 0)
                         ? formatTrackLength((long) info.durationSecs * 1000)
                         : "Unknown";
-                // Update the ListView item in place
                 int idx = playlist.indexOf(path);
                 if (idx >= 0 && idx < fileListView.getItems().size()) {
                     fileListView.getItems().set(idx, new Track(fileName, duration));

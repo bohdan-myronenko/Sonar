@@ -93,7 +93,11 @@ jobs:
   windows:
     name: Windows (x64)
     needs: version
-    runs-on: windows-latest
+    # package-win.sh cross-builds the whole Windows package from Linux: it
+    # downloads a stock Adoptium Windows JRE and JavaFX's -win jars, then
+    # wraps everything with a Linux build of launch4j. No Windows runner,
+    # jlink, or jpackage is involved, and there is no code signing to do.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -103,48 +107,42 @@ jobs:
           java-version: '25'
           cache: maven
 
-      # package.ps1 downloads pinned, checksum-verified LGPL builds of libmpv
-      # and ffmpeg and bundles them, because Windows has neither as a system
-      # component. Signing is skipped automatically when the secrets are
-      # absent, so forks and dispatch runs still produce a usable package.
+      # 7z is needed to unpack the libmpv archive and to zip the final
+      # package; everything else package-win.sh needs (curl, unzip, tar,
+      # sha256sum, awk, find) is already on ubuntu-latest.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends p7zip-full
+
+      # Speeds up re-runs: the JRE, launch4j, JavaFX -win jars, libmpv and
+      # ffmpeg are all downloaded into .cache/ and content-verified there.
+      - name: Cache downloaded Windows build assets
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: package-win-cache-${{ hashFiles('package-win.sh') }}
+
       - name: Package
-        shell: pwsh
         env:
-          SONAR_SIGN_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
-          SONAR_SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
-        run: .\package.ps1 -Version ${{ needs.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: ./package-win.sh
 
-      # `java.exe -version` doubles as a check that the options baked in by
-      # jlink --add-options are valid: an unrecognised one would abort here.
+      # The produced binaries are for Windows and can't run on this Linux
+      # runner, so this only checks the zip's layout. package-win.sh's own
+      # Step 5 already verifies the unpacked tree before it gets this far.
       - name: Smoke test
-        shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          & target\sonar-jlink\bin\java.exe -version
-          Write-Host '--- jlink module list ---'
-          $mods = & target\sonar-jlink\bin\java.exe --list-modules
-          $mods
-          if (($mods -join "`n") -notmatch 'folltrace\.sonar') { throw 'folltrace.sonar not linked into runtime' }
-          foreach ($p in 'target\jpackage\Sonar\Sonar.exe',
-                         'target\jpackage\Sonar\app\libmpv-2.dll',
-                         'target\jpackage\Sonar\app\ffmpeg\ffmpeg.exe',
-                         'target\jpackage\Sonar\app\ffmpeg\ffprobe.exe',
-                         'target\jpackage\Sonar\licenses\mpv\LGPL-2.1.txt',
-                         'target\jpackage\Sonar\licenses\ffmpeg\LGPL-2.1.txt') {
-            if (-not (Test-Path $p)) { throw "missing: $p" }
-          }
-          # The bundled ffprobe must actually run: a missing shared library
-          # would otherwise only surface for users, as a silent fallback to
-          # "Unknown" durations.
-          $v = & target\jpackage\Sonar\app\ffmpeg\ffprobe.exe -version 2>&1 | Select-Object -First 1
-          if ($LASTEXITCODE -ne 0) { throw "bundled ffprobe failed to run: $v" }
-          Write-Host "bundled $v"
-
-      - name: Report signing status
-        shell: pwsh
-        run: |
-          $sig = Get-AuthenticodeSignature 'target\jpackage\Sonar\Sonar.exe'
-          Write-Host "Sonar.exe signature status: $($sig.Status)"
-          if ($sig.Status -eq 'Valid') { Write-Host "Signed by: $($sig.SignerCertificate.Subject)" }
+          OUTPUT="target/sonar-${VERSION}-windows-x64.zip"
+          test -f "$OUTPUT"
+          LISTING="$(unzip -l "$OUTPUT")"
+          for entry in Sonar.exe Sonar-debug.bat jre/bin/java.exe jre/bin/javaw.exe \
+                       app/sonar.jar app/native/libmpv-2.dll app/ffmpeg/ffmpeg.exe \
+                       app/ffmpeg/ffprobe.exe licenses/mpv/LGPL-2.1.txt licenses/ffmpeg/LGPL-2.1.txt; do
+            echo "$LISTING" | grep -q "$entry" || { echo "ERROR: $entry missing from $OUTPUT"; exit 1; }
+          done
 
       - uses: actions/upload-artifact@v4
         with:
